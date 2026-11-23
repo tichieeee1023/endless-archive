@@ -26,7 +26,7 @@ export default function FinalChoiceScreen() {
         <header className="prologue-topline">
           <span>이름 없는 역</span><span>THE LAST PAGE · 03</span>
         </header>
-        <div className="chapter-visual"><ExtraArt src={EXTRA_ART.scene_journey_end} className="chapter-illustration" /></div>
+        <div className="chapter-visual"><ExtraArt src={EXTRA_ART.story_dawn_station_bench} className="chapter-illustration" /></div>
         <div className="chapter-content">
           <p className="section-kicker">THE UNNAMED STATION · ENDING</p>
           <h1>새벽역의 마지막 승객</h1>

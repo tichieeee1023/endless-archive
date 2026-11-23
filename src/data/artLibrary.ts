@@ -731,7 +731,7 @@ export const EVENT_ART: Readonly<Record<string, string>> = {
   "train_window_station": "reuse_02_1_station_with_train",
   "train_blank_page": "planned_01_2_unfinished_book",
   "train_paper_moth": "reuse_03_4_ruined_library",
-  "train_red_thread": "reuse_04_4_archway",
+  "train_red_thread": "planned_02_4_night_train_window",
   "train_sealed_parcel": "reuse_01_3_lost_luggage",
   "train_silent_car": "planned_02_4_night_train_window",
   "train_window_station_echo": "reuse_02_4_ruined_window",

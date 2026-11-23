@@ -8,8 +8,6 @@ import ArchiveModal from "./ArchiveModal";
 import { getEndingArt } from "../data/artLibrary";
 import ArtFrame from "./ArtFrame";
 import { formatNarrative } from "../lib/formatNarrative";
-import { EXTRA_ART } from "../data/extraArt";
-import ExtraArt from "./ExtraArt";
 
 export default function EndingScreen() {
   const startRun = useRun((s) => s.startRun);
@@ -43,7 +41,6 @@ export default function EndingScreen() {
       <p className="ending-kind">여정의 결말</p>
       <h1>{ending.title}</h1>
       <div className="ending-rule" aria-hidden="true">✦</div>
-      <ExtraArt src={EXTRA_ART.scene_journey_end} className="extra-art--ending" />
       <ArtFrame art={getEndingArt(ending.id)} variant="ending" eager />
       <p className="ending-main-copy">{formatNarrative(ending.text)}</p>
       {resolution.routes.length > 0 ? (

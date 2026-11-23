@@ -541,7 +541,6 @@ p { margin: 0; }
 .destination__icon { position: relative; }
 .extra-art--node { position: absolute; inset: 0; width: 100%; height: 100%; background: #fff; }
 .extra-art--level { width: 110px; height: 78px; align-self: center; }
-.extra-art--ending { width: min(100%, 280px); max-height: 200px; }
 .story-page { grid-column: 1 / -1; display: flex; justify-content: center; min-height: 0; overflow: hidden; background: #fff; }
 .story-page .story-sheet.encounter-sheet { width: 100%; max-width: 760px; height: 100%; max-height: none; padding: 28px 32px max(32px, env(safe-area-inset-bottom)); border: 0; box-shadow: none; background: #fff; }
 .dot-meter-wrap { position: relative; min-width: 0; }

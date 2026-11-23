@@ -26,6 +26,7 @@ export const EXTRA_ART = {
   story_erased_record: "/art/scene/erased_record.webp",
   story_unfulfilled_promise: "/art/scene/unfulfilled_promise.webp",
   story_dawn_moon_station: "/art/scene/dawn_moon_station.webp",
+  story_dawn_station_bench: "/art/events/planned_05_4_empty_platform_bench.webp",
   scene_defeat: "/art/scene/scene_defeat.webp",
   scene_journey_end: "/art/scene/scene_journey_end.webp",
   levelup_book: "/art/levelup/levelup_book.webp",
