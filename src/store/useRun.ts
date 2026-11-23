@@ -6,10 +6,13 @@ import type { BattleState } from "../types/battle";
 import type { NodeResult, ShopItem } from "../types/node";
 import type { NpcId } from "../types/npc";
 import { generateChoices } from "../lib/mapgen";
+import { pickWeightedEncounter } from "../lib/encounterPool";
 import { spawnEnemy } from "../data/enemies";
 import { ENCOUNTERS } from "../data/encounters";
 import { PROLOGUE_CHOICES, PROLOGUE_PAGES } from "../data/prologue";
 import { successChance } from "../lib/check";
+import { isChoiceAvailable } from "../lib/encounterChoice";
+import { STORY_PROGRESS, migrateStoryProgress } from "../lib/storyProgress";
 import { bondProtection } from "../lib/bond";
 import type { EndingResult } from "../lib/ending";
 import { audio } from "../lib/audio";
@@ -45,7 +48,7 @@ interface RunState {
   battle: BattleState | null;
   shopItems: ShopItem[] | null;
   activeEncounter: string | null;
-  encounterOutcome: { text: string; nextId?: string } | null;
+  encounterOutcome: { text: string; nextId?: string; effects?: string[] } | null;
   seenEncounters: string[];
   autoBattle: boolean;
   prologueStep: number;
@@ -298,19 +301,7 @@ export const useRun = create<RunState>()(
 
       pickEncounter: (act) => {
         const { flags, seenEncounters } = get();
-        const pool = ENCOUNTERS.filter((e) =>
-          e.weight > 0 && (!e.minAct || act >= e.minAct)
-          && (e.once === false || !seenEncounters.includes(e.id))
-          && !e.requiresAll?.some((f) => !flags.includes(f))
-          && !e.requiresNone?.some((f) => flags.includes(f)),
-        );
-        if (!pool.length) return null;
-        let roll = Math.random() * pool.reduce((sum, e) => sum + e.weight, 0);
-        for (const e of pool) {
-          roll -= e.weight;
-          if (roll < 0) return e.id;
-        }
-        return pool[pool.length - 1].id;
+        return pickWeightedEncounter(ENCOUNTERS, act, flags, seenEncounters);
       },
 
       resolveEncounterChoice: (i) => {
@@ -319,8 +310,7 @@ export const useRun = create<RunState>()(
         const enc = ENCOUNTERS.find((e) => e.id === s.activeEncounter);
         const choice = enc?.choices[i];
         if (!enc || !choice) return;
-        if (choice.require?.flag && !s.flags.includes(choice.require.flag)) return;
-        if (choice.require?.stat && choice.require.min !== undefined && s.stats[choice.require.stat] < choice.require.min) return;
+        if (!isChoiceAvailable(choice, s.flags, s.stats)) return;
 
         let outcome = choice.result;
         if (choice.check) {
@@ -329,19 +319,46 @@ export const useRun = create<RunState>()(
           if (roll > threshold && choice.fail) outcome = choice.fail;
         }
 
-        s.addLog(`【${enc.title}】\n${choice.text}\n\n${outcome.text}`, "sys");
-        if (outcome.affinity && enc.npcId) s.addAffinity(enc.npcId, outcome.affinity);
+        const effects: string[] = [];
+        if (outcome.affinity && enc.npcId) {
+          const before = s.affinity[enc.npcId];
+          const after = Math.max(0, Math.min(100, before + outcome.affinity));
+          const change = after - before;
+          if (change) effects.push(`${enc.npcId === "rael" ? "라엘" : enc.npcId === "seon" ? "세온" : "카이루"} 관계 ${change > 0 ? "+" : ""}${change}`);
+          s.addAffinity(enc.npcId, outcome.affinity);
+        }
+        // Event rewards are settled immediately: the result screen has no separate
+        // nodeResult, so advanceFloor must never apply the same reward again.
+        if (outcome.reward) {
+          const reward = outcome.reward;
+          const afterGold = Math.max(0, s.gold + (reward.gold ?? 0));
+          const afterHp = Math.max(1, Math.min(s.maxHp, s.hp + (reward.hp ?? 0)));
+          const afterMp = Math.max(0, Math.min(s.maxMp, s.mp + (reward.mp ?? 0)));
+          for (const [name, change] of [
+            ["골드", afterGold - s.gold], ["체력", afterHp - s.hp], ["내공", afterMp - s.mp],
+          ] as const) {
+            if (change !== 0) effects.push(`${name} ${change > 0 ? "+" : ""}${change}`);
+          }
+          set({ gold: afterGold, hp: afterHp, mp: afterMp });
+        }
         outcome.setFlags?.forEach((f) => s.addFlag(f));
         outcome.clearFlags?.forEach((f) => s.removeFlag(f));
+        // Every meeting can reveal a story clue, even after a refusal or failed check.
+        const storyFlag = STORY_PROGRESS[enc.id];
+        if (storyFlag) s.addFlag(storyFlag);
         const stage = /(?:encounter_)?([12])$/.exec(enc.id)?.[1];
         if (enc.npcId && stage && outcome === choice.result && (outcome.affinity ?? 0) > 0) {
           s.addFlag(`bond_${enc.npcId}_${stage}`);
         }
-        if ((outcome === choice.result || outcome.setFlags?.length || outcome.nextId) && !get().seenEncounters.includes(enc.id)) {
+        // A one-time encounter is consumed even on a failed check or refusal.
+        // Otherwise failures re-enter the random pool and can repeat forever.
+        if (enc.once !== false && !get().seenEncounters.includes(enc.id)) {
           set((st) => ({ seenEncounters: [...st.seenEncounters, enc.id] }));
         }
 
-        set({ encounterOutcome: { text: outcome.text, nextId: outcome.nextId } });
+        const effectText = effects.length ? `\n${effects.join(" · ")}` : "";
+        s.addLog(`【${enc.title}】\n${choice.text}\n\n${outcome.text}${effectText}`, "sys");
+        set({ encounterOutcome: { text: outcome.text, nextId: outcome.nextId, effects } });
       },
 
       continueEncounter: () => {
@@ -378,7 +395,7 @@ export const useRun = create<RunState>()(
     }),
     {
       name: "endless-archive-run",
-      version: 6,
+      version: 7,
       storage: slotStorage,
       migrate: (persisted: any, version) => {
         const s = persisted;
@@ -423,6 +440,15 @@ export const useRun = create<RunState>()(
           s.endingRecorded = s.status === "ended";
         }
         if (version < 6) s.endingResult = null;
+        if (version < 7) {
+          // Existing story progress counts even if an older run only stored bond flags.
+          // Old *_end_confirmed flags are deliberately NOT upgraded to a new BAD/NORMAL/HAPPY:
+          // the old data does not reveal which outcome the player actually chose.
+          s.flags = migrateStoryProgress(
+            Array.isArray(s.flags) ? s.flags : [],
+            Array.isArray(s.seenEncounters) ? s.seenEncounters : [],
+          );
+        }
         return s;
       },
       partialize: (s) => ({

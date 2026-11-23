@@ -8,7 +8,13 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint src",
     "preview": "vite preview",
-    "sim": "node scripts/simulate.mjs 1000"
+    "sim": "node scripts/simulate.mjs 1000",
+    "test:p1": "node scripts/test-p1.cjs",
+    "test:p2": "node scripts/test-p2.cjs",
+    "test:p3": "node scripts/test-p3.cjs",
+    "sim:p3": "node scripts/simulate-p3.cjs",
+    "test:p4": "node scripts/test-p4.cjs",
+    "test:art": "node scripts/test-art-integration.cjs"
   },
   "dependencies": {
     "react": "^18.3.1",

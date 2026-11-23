@@ -1,0 +1,20 @@
+{
+  "death": "planned_06_4_corridor_end_door",
+  "solo": "planned_01_4_archive_bookshelf",
+  "true_end": "planned_04_4_book_notebook",
+  "rael_route_bad": "planned_02_1_engine_door",
+  "rael_route_normal": "planned_02_2_conductors_logbook",
+  "rael_route_happy": "cg_rael_3_happy",
+  "rael_romance": "cg_rael_4_romance_tea",
+  "seon_route_bad": "planned_03_3_last_knight",
+  "seon_route_normal": "planned_03_4_argen_outskirts",
+  "seon_route_happy": "cg_seon_3_happy",
+  "seon_romance": "cg_seon_4_romance_bandage",
+  "kairu_route_bad": "planned_04_2_forbidden_colophon",
+  "kairu_route_normal": "planned_04_3_unwritten_ending",
+  "kairu_route_happy": "cg_kairu_3_happy",
+  "kairu_romance": "cg_kairu_4_romance_promise",
+  "rael_end": "cg_rael_4_romance_tea",
+  "seon_end": "cg_seon_4_romance_bandage",
+  "kairu_end": "cg_kairu_4_romance_promise"
+}

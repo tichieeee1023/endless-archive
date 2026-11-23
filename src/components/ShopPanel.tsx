@@ -1,3 +1,4 @@
+import { getShopArt } from "../data/artLibrary";
 import { useRun } from "../store/useRun";
 
 export default function ShopPanel() {
@@ -14,6 +15,7 @@ export default function ShopPanel() {
           disabled={gold < it.price}
           className="story-button disabled:opacity-40"
         >
+          {getShopArt(it.id) && <img className="shop-item__icon" src={getShopArt(it.id)?.src} alt="" width="52" height="52" loading="lazy" />}
           <span>{it.name}<small className="shop-effect">{it.effect === "heal" ? `체력 +${it.amount}` : it.effect === "mana" ? `내공 +${it.amount}` : "능력치 +1"}</small></span>
           <span className="shop-gold">{it.price} G</span>
         </button>

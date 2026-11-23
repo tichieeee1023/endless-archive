@@ -2,8 +2,8 @@ import type { MapNode, NodeType } from "../types/game";
 import { mulberry32, hashSeed } from "./rng";
 
 const NODE_POOL: NodeType[] = [
-  "battle", "battle", "battle", "battle",
-  "event", "event", "event",
+  "battle", "battle", "battle",
+  "event", "event", "event", "event", "event",
   "elite", "shop", "rest", "treasure",
 ];
 

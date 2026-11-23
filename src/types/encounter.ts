@@ -4,7 +4,7 @@ import type { NpcId } from "./npc";
 export interface EncounterChoice {
   text: string;
   /** 조건: 특정 스탯 수치 또는 플래그 보유 시에만 표시 */
-  require?: { stat?: StatKey; min?: number; flag?: string };
+  require?: { stat?: StatKey; min?: number; flag?: string; flagsAll?: string[] };
   /** 판정: 성공 확률 = base + stat*5 - difficulty + 50 */
   check?: { stat: StatKey; base: number; difficulty: number };
   /** 성공/확정 결과 */
@@ -16,6 +16,8 @@ export interface EncounterChoice {
 export interface EncounterOutcome {
   text: string;
   affinity?: number;
+  /** 공통 사건에서 얻거나 잃는 소규모 자원. 범위를 초과하지 않도록 스토어에서 제한한다. */
+  reward?: { gold?: number; hp?: number; mp?: number };
   /** 이 선택으로 부여되는 플래그 */
   setFlags?: string[];
   /** 이 선택으로 제거되는 플래그 */
