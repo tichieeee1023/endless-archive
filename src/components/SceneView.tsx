@@ -12,7 +12,7 @@ const CHAPTER_TEXT = [
 ];
 
 export default function SceneView() {
-  const { act, floor, current, status, battle, nodeResult, storyId, flags } = useRun();
+  const { act, floor, current, status, battle, nodeResult, shopkeeper, storyId, flags } = useRun();
   const choosing = status === "choosing";
   const text = choosing
     ? storyId === "unnamed_station" ? unnamedStationChapterText(act, flags) : CHAPTER_TEXT[Math.min(Math.max(act - 1, 0), 2)]
@@ -20,11 +20,15 @@ export default function SceneView() {
   const chapterTitle = storyId === "unnamed_station"
     ? ["차표에 적힌 약속", "기록에서 사라진 승객", "새벽역을 향해"][Math.min(Math.max(act - 1, 0), 2)]
     : "어느 객차로 향할까";
+  const shopArt = shopkeeper === "spirit" ? EXTRA_ART.scene_spirit_merchant
+    : act <= 1 ? EXTRA_ART.scene_traveling_merchant : EXTRA_ART.scene_wagon_shop;
   const art = status === "battle" && battle ? enemyArt(battle.enemy.name)
     : nodeResult?.endsRun === "death" ? EXTRA_ART.scene_defeat
-    : status === "shop" ? EXTRA_ART.scene_shop
+    : status === "shop" ? shopArt
     : status === "resolving" && current?.type === "rest" ? EXTRA_ART.scene_rest
-    : choosing && floor === 1 ? actArt(act) : undefined;
+    : choosing && floor === 1
+      ? storyId === "unnamed_station" && act === 3 ? EXTRA_ART.story_dawn_moon_station : actArt(act)
+      : undefined;
   return (
     <section className="current-page" aria-label="현재 페이지">
       <span className="current-page__number">{String(act).padStart(2, "0")} / {String(floor).padStart(2, "0")}</span>

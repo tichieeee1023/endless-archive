@@ -793,11 +793,33 @@ export const ENDING_ART: Readonly<Record<string, string>> = {
 };
 export const SHOP_ART: Readonly<Record<string, string>> = {
   "potion": "item_2_4_healing_potion",
+  "focus_potion": "item_1_5_quill_ink",
   "mana": "item_1_5_quill_ink",
+  "worn_quill": "item_1_3_cracked_sword",
+  "bound_blade": "item_1_3_cracked_sword",
+  "rail_cutter": "item_1_3_cracked_sword",
   "ink_blade": "item_1_3_cracked_sword",
+  "binding_coat": "item_2_5_platform_lantern",
   "lucky_die": "item_1_1_pocket_watch",
   "wisdom_up": "item_1_4_bookmark_book",
-  "will_up": "item_1_3_cracked_sword"
+  "will_up": "item_1_3_cracked_sword",
+  "spirit_water": "item_2_4_healing_potion",
+  "spirit_focus": "item_1_5_quill_ink",
+  "spirit_ink": "item_1_5_quill_ink",
+  "spirit_quill_1": "item_1_3_cracked_sword",
+  "spirit_quill_2": "item_1_3_cracked_sword",
+  "spirit_quill_3": "item_1_3_cracked_sword",
+  "spirit_quill": "item_1_3_cracked_sword",
+  "spirit_ward": "item_2_5_platform_lantern",
+  "spirit_die": "item_1_1_pocket_watch",
+  "pressed_ticket": "item_1_1_pocket_watch",
+  "blue_ink_drop": "item_1_5_quill_ink",
+  "conductor_seal": "item_2_5_platform_lantern",
+  "glass_bookmark": "item_1_4_bookmark_book",
+  "moon_bell": "item_1_1_pocket_watch",
+  "iron_clasp": "item_1_3_cracked_sword",
+  "wind_knot": "item_1_1_pocket_watch",
+  "station_silver": "item_1_4_bookmark_book"
 };
 
 /** Event text and choices are unchanged. The result receives a special CG only after the ending flag is awarded. */

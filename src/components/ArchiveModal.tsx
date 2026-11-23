@@ -9,7 +9,7 @@ import { bonusCatalogFor, endingProgress, legacyCollected, routeCatalogFor } fro
 import { shareUrl } from "../lib/seedFromUrl";
 import SlotSwitcher from "./SlotSwitcher";
 import EndingRecallModal from "./EndingRecallModal";
-import archiveIllustration from "../assets/illustrations/archive.png";
+import archiveIllustration from "../assets/illustrations/archive.webp";
 
 interface Props { open: boolean; onClose: () => void; }
 const NPC_ORDER: NpcId[] = ["rael", "seon", "kairu"];

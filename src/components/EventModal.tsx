@@ -10,9 +10,9 @@ import type { NpcId } from "../types/npc";
 import { successChance } from "../lib/check";
 import { isChoiceAvailable } from "../lib/encounterChoice";
 import { formatNarrative } from "../lib/formatNarrative";
-import raelPortrait from "../assets/illustrations/rael.png";
-import seonPortrait from "../assets/illustrations/seon.png";
-import kairuPortrait from "../assets/illustrations/kairu.png";
+import raelPortrait from "../assets/illustrations/rael.webp";
+import seonPortrait from "../assets/illustrations/seon.webp";
+import kairuPortrait from "../assets/illustrations/kairu.webp";
 
 const portraits: Record<NpcId, string> = { rael: raelPortrait, seon: seonPortrait, kairu: kairuPortrait };
 

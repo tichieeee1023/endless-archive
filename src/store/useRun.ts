@@ -4,7 +4,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { STAT_LABEL } from "../types/game";
 import type { MapNode, Stats, Status, LogEntry, StatKey } from "../types/game";
 import type { BattleState } from "../types/battle";
-import type { NodeResult, ShopItem } from "../types/node";
+import type { CharmEffect, CharmItem, NodeResult, ShopCharmOffer, ShopItem, WeaponItem } from "../types/node";
 import type { NpcId } from "../types/npc";
 import { generateChoices } from "../lib/mapgen";
 import { pickWeightedEncounter } from "../lib/encounterPool";
@@ -13,10 +13,12 @@ import { ENCOUNTERS } from "../data/encounters";
 import { getEncounterArt, getShopArt } from "../data/artLibrary";
 import { useMeta } from "./useMeta";
 import { PROLOGUE_CHOICES, PROLOGUE_PAGES } from "../data/prologue";
-import { rollBattleDamage, successChance } from "../lib/check";
+import { rollBattleOpening, successChance } from "../lib/check";
+import { formatCharmEffects, formatStatBonuses } from "../lib/equipment";
 import { isChoiceAvailable } from "../lib/encounterChoice";
 import { STORY_PROGRESS, migrateStoryProgress } from "../lib/storyProgress";
 import { bondProtection } from "../lib/bond";
+import { isLastBossTelegraph } from "../lib/battlePattern";
 import type { EndingResult } from "../lib/ending";
 import { audio } from "../lib/audio";
 import { slotRef } from "./useSaveSlots";
@@ -33,13 +35,89 @@ const INITIAL_STATS: Stats = {
 };
 
 const SHOP_POOL: ShopItem[] = [
-  { id: "potion", name: "회복의 페이지", price: 20, effect: "heal", amount: 30 },
-  { id: "mana", name: "명상의 잉크", price: 25, effect: "mana", amount: 20 },
-  { id: "ink_blade", name: "철필의 단검", price: 35, effect: "weapon", amount: 2 },
+  { id: "potion", name: "체력 물약", price: 12, effect: "heal", amount: 1 },
+  { id: "focus_potion", name: "집중력 물약", price: 12, effect: "mana", amount: 1 },
+  { id: "worn_quill", name: "낡은 철필", price: 12, effect: "weapon", amount: 1, statBonus: { insight: 1 }, minAct: 1 },
+  { id: "bound_blade", name: "강철 제본검", price: 38, effect: "weapon", amount: 2, statBonus: { will: 1 }, minAct: 2 },
+  { id: "rail_cutter", name: "운행 절단검", price: 68, effect: "weapon", amount: 3, statBonus: { body: 1 }, minAct: 3 },
+  { id: "binding_coat", name: "두꺼운 제본 외투", price: 42, effect: "armor", amount: 1 },
   { id: "lucky_die", name: "행운의 주사위", price: 30, effect: "luck", amount: 1 },
   { id: "wisdom_up", name: "지혜의 각주", price: 60, effect: "stat", stat: "wisdom", amount: 1 },
   { id: "will_up", name: "의지의 장정", price: 60, effect: "stat", stat: "will", amount: 1 },
 ];
+
+const SPIRIT_SHOP_POOL: ShopItem[] = [
+  { id: "spirit_water", name: "새벽 이슬 물약", price: 15, effect: "heal", amount: 1 },
+  { id: "spirit_focus", name: "푸른 잉크 물약", price: 15, effect: "mana", amount: 1 },
+  { id: "spirit_quill_1", name: "역의 파편", price: 15, effect: "weapon", amount: 1, statBonus: { resonance: 1 }, minAct: 1 },
+  { id: "spirit_quill_2", name: "유리 궤도검", price: 45, effect: "weapon", amount: 2, statBonus: { wisdom: 1 }, minAct: 2 },
+  { id: "spirit_quill_3", name: "새벽의 단도", price: 75, effect: "weapon", amount: 3, statBonus: { insight: 1 }, minAct: 3 },
+  { id: "spirit_ward", name: "역무원의 부적", price: 45, effect: "armor", amount: 1 },
+  { id: "spirit_die", name: "길잡이의 주사위", price: 35, effect: "luck", amount: 1 },
+];
+
+const CHARM_POOL: CharmItem[] = [
+  { id: "pressed_ticket", name: "찢긴 차표", price: 28, value: 14, effects: [{ kind: "stat", stat: "body", amount: 1 }, { kind: "maxHp", amount: 8 }] },
+  { id: "blue_ink_drop", name: "푸른 잉크 방울", price: 30, value: 15, effects: [{ kind: "stat", stat: "resonance", amount: 1 }, { kind: "maxMp", amount: 8 }] },
+  { id: "conductor_seal", name: "차장의 인장", price: 38, value: 19, effects: [{ kind: "stat", stat: "will", amount: 1 }, { kind: "maxHp", amount: 5 }] },
+  { id: "glass_bookmark", name: "유리 책갈피", price: 34, value: 17, effects: [{ kind: "stat", stat: "insight", amount: 1 }, { kind: "stat", stat: "wisdom", amount: 1 }] },
+  { id: "moon_bell", name: "달의 방울", price: 40, value: 20, effects: [{ kind: "stat", stat: "charm", amount: 1 }, { kind: "maxMp", amount: 6 }] },
+  { id: "iron_clasp", name: "철제 매듭", price: 42, value: 21, effects: [{ kind: "stat", stat: "body", amount: 1 }, { kind: "stat", stat: "will", amount: 1 }] },
+  { id: "wind_knot", name: "바람의 매듭", price: 36, value: 18, effects: [{ kind: "luck", amount: 1 }, { kind: "stat", stat: "insight", amount: 1 }] },
+  { id: "station_silver", name: "역의 은표", price: 45, value: 22, effects: [{ kind: "stat", stat: "wisdom", amount: 1 }, { kind: "maxHp", amount: 6 }] },
+];
+
+type Shopkeeper = "merchant" | "spirit";
+const MAX_ARMOR_POWER = 3;
+const MAX_CONSUMABLES = 5;
+const MAX_WEAPON_INVENTORY = 8;
+
+function weaponModifierKey(power: number, bonus?: Partial<Stats>) {
+  const secondary = Object.entries(bonus ?? {}).filter(([, amount]) => amount).sort(([a], [b]) => a.localeCompare(b));
+  return `${power}:${secondary.map(([stat, amount]) => `${stat}=${amount}`).join(",")}`;
+}
+
+function buildShopStock(pool: ShopItem[], act: number, luck: number, armorPower: number, ownedWeapons: WeaponItem[]): ShopItem[] {
+  const available = pool.filter((item) =>
+    (!item.minAct || act >= item.minAct)
+    && !(item.effect === "luck" && luck >= 1)
+    && !(item.effect === "armor" && armorPower >= MAX_ARMOR_POWER),
+  ).filter((item) => item.effect !== "weapon" || !ownedWeapons.some((weapon) =>
+    weaponModifierKey(weapon.power, weapon.statBonus) === weaponModifierKey(item.amount, item.statBonus),
+  ));
+  const weapon = available.filter((item) => item.effect === "weapon").sort((a, b) => b.amount - a.amount)[0];
+  const core = [
+    available.find((item) => item.effect === "heal"),
+    available.find((item) => item.effect === "mana"),
+    weapon,
+    available.find((item) => item.effect === "armor"),
+  ].filter((item): item is ShopItem => Boolean(item));
+  const coreIds = new Set(core.map((item) => item.id));
+  const extras = available.filter((item) => !coreIds.has(item.id) && item.effect !== "weapon");
+  while (extras.length > 2) extras.splice(Math.floor(Math.random() * extras.length), 1);
+  return [...core, ...extras].map((item) => ({ ...item, stock: 1 }));
+}
+
+function buildCharmStock(ownedIds: string[]): ShopCharmOffer[] {
+  const available = CHARM_POOL.filter((charm) => !ownedIds.includes(charm.id));
+  if (!available.length || Math.random() >= 0.55) return [];
+
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+  const count = Math.random() < 0.2 ? 2 : 1;
+  return available.slice(0, count).map((charm) => ({ ...charm, stock: 1 }));
+}
+
+function formatWeaponStatBonus(bonus?: Partial<Stats>) {
+  const formatted = formatStatBonuses(bonus);
+  return formatted.length ? ` · ${formatted.join(" · ")}` : "";
+}
+
+function formatCharmEffectSummary(effects: CharmEffect[]) {
+  return formatCharmEffects(effects).join(" · ");
+}
 
 function rememberSeenArt(encounters: unknown, flags: unknown) {
   if (!Array.isArray(encounters)) return;
@@ -60,7 +138,10 @@ interface RunState {
   stats: Stats;
   hp: number; maxHp: number;
   mp: number; maxMp: number;
-  weaponPower: number; luck: number;
+  weaponPower: number; armorPower: number; luck: number;
+  healthPotions: number; focusPotions: number;
+  ownedWeapons: WeaponItem[]; equippedWeaponId: string | null;
+  ownedCharms: CharmItem[]; equippedCharmId: string | null;
   gold: number; level: number; exp: number;
   statPoints: number;
   choices: MapNode[];
@@ -69,6 +150,9 @@ interface RunState {
   nodeResult: NodeResult | null;
   battle: BattleState | null;
   shopItems: ShopItem[] | null;
+  shopCharms: ShopCharmOffer[] | null;
+  shopkeeper: Shopkeeper | null;
+  pendingWeaponPrompt: { weaponId: string; source: "purchase" | "loot" } | null;
   activeEncounter: string | null;
   encounterOutcome: { text: string; nextId?: string; effects?: string[]; battle?: { name: string } } | null;
   seenEncounters: string[];
@@ -95,8 +179,16 @@ interface RunState {
   advanceFloor: () => void;
   playerAttack: () => void;
   playerSkill: () => void;
+  playerBrace: () => void;
   buyItem: (itemId: string) => void;
+  buyCharm: (charmId: string) => void;
+  equipWeapon: (weaponId: string) => void;
+  equipCharm: (charmId: string) => void;
+  dismissWeaponPrompt: () => void;
+  sellWeapon: (weaponId: string) => void;
   closeShop: () => void;
+  useHealingPotion: () => void;
+  useFocusPotion: () => void;
   pickEncounter: (act: number) => string | null;
   resolveEncounterChoice: (i: number) => void;
   continueEncounter: () => void;
@@ -121,10 +213,12 @@ export const useRun = create<RunState>()(
     (set, get) => ({
       seed: "", storyId: "", act: 1, floor: 1,
       stats: INITIAL_STATS,
-      hp: 60, maxHp: 60, mp: 40, maxMp: 40, weaponPower: 0, luck: 0,
+      hp: 60, maxHp: 60, mp: 40, maxMp: 40, weaponPower: 0, armorPower: 0, luck: 0,
+      healthPotions: 1, focusPotions: 1, ownedWeapons: [], equippedWeaponId: null,
+      ownedCharms: [], equippedCharmId: null,
       gold: 0, level: 1, exp: 0, statPoints: 0,
       choices: [], current: null, status: "choosing",
-      nodeResult: null, battle: null, shopItems: null, activeEncounter: null, encounterOutcome: null, seenEncounters: [], autoBattle: false, prologueStep: 0, interludeAct: null, finalDestination: null, endingRecorded: false, endingResult: null,
+      nodeResult: null, battle: null, shopItems: null, shopCharms: null, shopkeeper: null, pendingWeaponPrompt: null, activeEncounter: null, encounterOutcome: null, seenEncounters: [], autoBattle: false, prologueStep: 0, interludeAct: null, finalDestination: null, endingRecorded: false, endingResult: null,
       affinity: { rael: 0, seon: 0, kairu: 0 },
       flags: [], logs: [],
 
@@ -132,11 +226,17 @@ export const useRun = create<RunState>()(
         const s = seed ?? Math.random().toString(36).slice(2, 10);
         set({
           seed: s, storyId: "", act: 1, floor: 1, stats: { ...INITIAL_STATS },
-          hp: 60, maxHp: 60, mp: 40, maxMp: 40, weaponPower: 0, luck: 0, gold: 0, level: 1, exp: 0, statPoints: 0,
+          hp: 60, maxHp: 60, mp: 40, maxMp: 40, weaponPower: 0, armorPower: 0, luck: 0,
+          healthPotions: 1, focusPotions: 1, ownedWeapons: [], equippedWeaponId: null,
+          ownedCharms: [], equippedCharmId: null,
+          gold: 0, level: 1, exp: 0, statPoints: 0,
           current: null, status: "prologue", prologueStep: 0, interludeAct: null, finalDestination: null, endingRecorded: false, endingResult: null,
-          nodeResult: null, battle: null, shopItems: null, activeEncounter: null, encounterOutcome: null, seenEncounters: [],
+          nodeResult: null, battle: null, shopItems: null, shopCharms: null, shopkeeper: null, pendingWeaponPrompt: null, activeEncounter: null, encounterOutcome: null, seenEncounters: [],
           affinity: { rael: 0, seon: 0, kairu: 0 }, flags: [],
-          logs: [{ id: 0, text: "빈 차표를 손에 쥐고 열차에 올랐다. 마지막 문장은 스스로 고르기로 했다.", type: "title" }],
+          logs: [
+            { id: 0, text: "빈 차표를 손에 쥐고 열차에 올랐다. 마지막 문장은 스스로 고르기로 했다.", type: "title" },
+            { id: 1, text: "비상용 체력 물약과 집중력 물약을 하나씩 챙겼다.", type: "loot" },
+          ],
           choices: generateChoices(s, 1, 1, FLOORS_PER_ACT),
         });
       },
@@ -222,20 +322,37 @@ export const useRun = create<RunState>()(
           case "elite":
           case "boss": {
             const enemy = spawnEnemy(s.level, s.seed, s.act, s.floor, node.type === "boss");
+            const difficulty = node.type === "boss" ? 14 + (s.act - 1) * 2 : node.type === "elite" ? 13 : 10;
+            const openingRoll = rollBattleOpening(s.stats.body, s.luck, difficulty);
+            const rollLabel = openingRoll.outcome === "great" ? "크리티컬!" : openingRoll.outcome === "success" ? "성공!" : openingRoll.outcome === "fumble" ? "대실패!" : "실패!";
             set({
               status: "battle",
               battle: { enemy, turn: 1, log: [`책장 사이에서 ${enemy.name}이(가) 모습을 드러낸다. 숨을 고를 틈도 없이 객차의 공기가 달라진다.`] },
             });
+            const battle = get().battle;
+            if (battle) set({ battle: {
+              ...battle,
+              openingRoll,
+              log: [...battle.log, `전투 전 판정 ${rollLabel} · d20 ${openingRoll.rolled} + 힘·행운 ${openingRoll.modifier} = ${openingRoll.total} / ${difficulty}${openingRoll.powerBonus ? ` · 공격력 +${openingRoll.powerBonus}` : ""}`],
+            } });
             break;
           }
-          case "shop":
-            const availableItems = SHOP_POOL.filter((item) => !(item.effect === "luck" && s.luck >= 1));
+          case "shop": {
+            const shopkeeper: Shopkeeper = Math.random() < 0.28 ? "spirit" : "merchant";
+            const pool = shopkeeper === "spirit" ? SPIRIT_SHOP_POOL : SHOP_POOL;
+            const availableItems = buildShopStock(pool, s.act, s.luck, s.armorPower, s.ownedWeapons);
+            const availableCharms = buildCharmStock(s.ownedCharms.map((charm) => charm.id));
             for (const item of availableItems) {
               const art = getShopArt(item.id);
               if (art) useMeta.getState().collectPage(`art:${art.id}`);
             }
-            set({ status: "shop", shopItems: availableItems });
+            for (const charm of availableCharms) {
+              const art = getShopArt(charm.id);
+              if (art) useMeta.getState().collectPage(`art:${art.id}`);
+            }
+            set({ status: "shop", shopItems: availableItems, shopCharms: availableCharms, shopkeeper });
             break;
+          }
           case "rest": {
             const heal = Math.floor(s.maxHp * 0.3);
             const mana = Math.floor(s.maxMp * 0.3);
@@ -319,7 +436,7 @@ export const useRun = create<RunState>()(
         if (nextAct > act) {
           set({
             act: nextAct, floor: 1, interludeAct: nextAct,
-            current: null, nodeResult: null, battle: null, shopItems: null, activeEncounter: null,
+            current: null, nodeResult: null, battle: null, shopItems: null, shopCharms: null, shopkeeper: null, activeEncounter: null,
             status: "interlude", choices: [],
           });
           return;
@@ -328,31 +445,33 @@ export const useRun = create<RunState>()(
         set({
           act: nextAct, floor: nextFloor,
           current: null, nodeResult: null,
-          battle: null, shopItems: null, activeEncounter: null,
+          battle: null, shopItems: null, shopCharms: null, shopkeeper: null, activeEncounter: null,
           status: "choosing",
           choices: generateChoices(seed, nextAct, nextFloor, FLOORS_PER_ACT),
         });
       },
 
       playerAttack: () => {
-        const { battle, stats, weaponPower, luck } = get();
+        const { battle, stats, weaponPower, armorPower } = get();
         if (!battle) return;
         audio.sfx("attack");
-        const roll = rollBattleDamage(Math.floor(stats.body * 1.8), weaponPower, luck);
-        const dmg = roll.damage;
+        const powerBonus = battle.openingRoll?.powerBonus ?? 0;
+        const riposteBonus = battle.nextAttackBonus ?? 0;
+        const baseDamage = Math.floor(stats.body * 1.8) + weaponPower + 1;
+        const dmg = Math.max(1, baseDamage + powerBonus + riposteBonus);
         const enemyHp = battle.enemy.hp - dmg;
-        const rollText = `${luck > 0 ? "행운의 주사위" : "공격 주사위"} ${roll.rolled}${roll.total !== roll.rolled ? ` +${roll.total - roll.rolled} → ${roll.total}` : ""}${roll.critical ? " · 대성공" : ""} · ${dmg} 피해`;
+        const rollText = `공격 · ${dmg} 피해${powerBonus ? ` · 전투 전 판정 +${powerBonus}` : ""}${riposteBonus ? ` · 흘려낸 힘 +${riposteBonus}` : ""}`;
         const logs = [...battle.log, `당신이 몸을 낮추고 앞으로 나아간다. ${battle.enemy.name}의 형체가 흔들린다.`, rollText];
 
         if (enemyHp <= 0) return winBattle(get, set, logs);
 
-        const incoming = Math.max(
-          1,
-          battle.enemy.atk - Math.floor(stats.will * 0.3) - bondProtection(get().affinity) + Math.floor(Math.random() * 4) - 2,
-        );
+        const incoming = modifyBossTelegraphDamage(battle,
+          counterDamage(battle.enemy.atk, stats.will, armorPower, get().affinity));
         const hp = get().hp - incoming;
         audio.sfx("hit");
-        logs.push("종이가 찢기는 소리와 함께 반격이 밀려온다. 당신은 이를 악물고 자리를 지킨다.");
+        logs.push(isLastBossTelegraph(battle)
+          ? `마지막 장의 예고된 강공격이 밀려온다 · 체력 -${incoming}`
+          : "종이가 찢기는 소리와 함께 반격이 밀려온다. 당신은 이를 악물고 자리를 지킨다.");
 
         if (hp <= 0) {
           set({
@@ -361,54 +480,183 @@ export const useRun = create<RunState>()(
           });
           return;
         }
-        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, log: logs } });
+        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, nextAttackBonus: 0, log: logs } });
       },
 
       playerSkill: () => {
-        const { battle, stats, mp, weaponPower, luck } = get();
+        const { battle, stats, mp, weaponPower, armorPower } = get();
         if (!battle) return;
         if (mp < 10) return get().addLog("집중력이 부족하다.", "sys");
         audio.sfx("attack");
-        const roll = rollBattleDamage(Math.floor(stats.resonance * 2.5) + 10, weaponPower, luck);
-        const dmg = roll.damage;
+        const powerBonus = battle.openingRoll?.powerBonus ?? 0;
+        const riposteBonus = battle.nextAttackBonus ?? 0;
+        const baseDamage = Math.floor(stats.resonance * 2.5) + 10 + weaponPower + 1;
+        const dmg = Math.max(1, baseDamage + powerBonus + riposteBonus);
         const enemyHp = battle.enemy.hp - dmg;
-        const rollText = `${luck > 0 ? "행운의 주사위" : "집중 주사위"} ${roll.rolled}${roll.total !== roll.rolled ? ` +${roll.total - roll.rolled} → ${roll.total}` : ""}${roll.critical ? " · 대성공" : ""} · ${dmg} 피해`;
+        const rollText = `공격 · ${dmg} 피해${powerBonus ? ` · 전투 전 판정 +${powerBonus}` : ""}${riposteBonus ? ` · 흘려낸 힘 +${riposteBonus}` : ""}`;
         const logs = [...battle.log, "숨을 고르고 손끝에 빛을 모은다. 빛이 어둠의 틈을 가른다.", rollText];
         set({ mp: mp - 10 });
         if (enemyHp <= 0) return winBattle(get, set, logs);
 
-        const incoming = Math.max(1, battle.enemy.atk - Math.floor(stats.will * 0.3) - bondProtection(get().affinity));
+        const incoming = modifyBossTelegraphDamage(battle,
+          Math.max(1, battle.enemy.atk - Math.floor(stats.will * 0.3) - bondProtection(get().affinity) - armorPower));
         const hp = get().hp - incoming;
         audio.sfx("hit");
-        logs.push("흩어진 그림자가 다시 몸을 세운다. 차가운 기운이 곁을 스친다.");
+        logs.push(isLastBossTelegraph(battle)
+          ? `마지막 장의 예고된 강공격이 빛을 밀어낸다 · 체력 -${incoming}`
+          : "흩어진 그림자가 다시 몸을 세운다. 차가운 기운이 곁을 스친다.");
         if (hp <= 0) {
           set({ battle: null, status: "resolving", nodeResult: { logs: [...logs, "…페이지가 찢어진다."], endsRun: "death" } });
           return;
         }
-        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, log: logs } });
+        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, nextAttackBonus: 0, log: logs } });
       },
 
+      playerBrace: () => {
+        const { battle, stats, weaponPower } = get();
+        if (!battle || !isLastBossTelegraph(battle)) return;
+        const baseDamage = Math.floor(stats.body * 1.8) + weaponPower + 1;
+        const nextAttackBonus = Math.max(8, Math.floor(baseDamage * 0.8));
+        audio.sfx("click");
+        set({ battle: {
+          ...battle,
+          turn: battle.turn + 1,
+          nextAttackBonus,
+          log: [...battle.log, `마지막 장의 강공격을 흘려냈다. 다음 공격 피해 +${nextAttackBonus}.`],
+        } });
+      },
+
+      useHealingPotion: () => useCombatPotion(get, set, "health"),
+      useFocusPotion: () => useCombatPotion(get, set, "focus"),
+
       buyItem: (itemId) => {
-        const { shopItems, gold, stats, weaponPower, luck } = get();
+        const { shopItems, gold, stats, armorPower, luck, healthPotions, focusPotions, ownedWeapons } = get();
         const item = shopItems?.find((x) => x.id === itemId);
         if (!item) return;
+        if (item.stock !== undefined && item.stock <= 0) return;
         if (gold < item.price) return get().addLog("골드가 부족하다.", "sys");
+        if (item.effect === "heal" && healthPotions >= MAX_CONSUMABLES) return;
+        if (item.effect === "mana" && focusPotions >= MAX_CONSUMABLES) return;
         if (item.effect === "luck" && luck >= 1) return;
-        if (item.effect === "weapon" && weaponPower >= 6) return;
-        set({ gold: gold - item.price });
-        if (item.effect === "heal") set((s) => ({ hp: Math.min(s.maxHp, s.hp + item.amount) }));
-        if (item.effect === "mana") set((s) => ({ mp: Math.min(s.maxMp, s.mp + item.amount) }));
+        if (item.effect === "weapon" && ownedWeapons.length >= MAX_WEAPON_INVENTORY) return;
+        if (item.effect === "weapon" && ownedWeapons.some((weapon) =>
+          weaponModifierKey(weapon.power, weapon.statBonus) === weaponModifierKey(item.amount, item.statBonus),
+        )) return;
+        if (item.effect === "armor" && armorPower >= MAX_ARMOR_POWER) return;
+        set({
+          gold: gold - item.price,
+          shopItems: shopItems?.map((shopItem) => shopItem.id === itemId
+            ? { ...shopItem, stock: Math.max(0, (shopItem.stock ?? 1) - 1) }
+            : shopItem),
+        });
+        if (item.effect === "heal") set((s) => ({ healthPotions: Math.min(MAX_CONSUMABLES, s.healthPotions + 1) }));
+        if (item.effect === "mana") set((s) => ({ focusPotions: Math.min(MAX_CONSUMABLES, s.focusPotions + 1) }));
         if (item.effect === "stat" && item.stat)
           set({ stats: { ...stats, [item.stat]: stats[item.stat] + item.amount } });
-        if (item.effect === "weapon") set({ weaponPower: Math.min(6, weaponPower + item.amount) });
+        if (item.effect === "weapon") {
+          const weapon: WeaponItem = {
+            id: `${item.id}-${Date.now()}`,
+            name: item.name,
+            power: item.amount,
+            value: Math.max(1, Math.floor(item.price * 0.5)),
+            statBonus: item.statBonus,
+          };
+          set((s) => ({
+            ownedWeapons: [...s.ownedWeapons, weapon],
+            pendingWeaponPrompt: { weaponId: weapon.id, source: "purchase" },
+          }));
+        }
+        if (item.effect === "armor") set({ armorPower: Math.min(MAX_ARMOR_POWER, armorPower + item.amount) });
         if (item.effect === "luck") set({ luck: Math.min(1, luck + item.amount) });
         const detail = item.effect === "weapon" ? ` · 공격 피해 +${item.amount}`
-          : item.effect === "luck" ? " · 주사위 보정 +1, 판정 +4%" : "";
+          : item.effect === "armor" ? ` · 피격 피해 -${item.amount}`
+          : item.effect === "luck" ? " · 주사위 보정 +1, 판정 +4%"
+          : item.effect === "heal" ? " · 체력 물약 +1"
+          : item.effect === "mana" ? " · 집중력 물약 +1" : "";
         get().addLog(`${item.name} 구매${detail}.`, "loot");
       },
 
+      equipWeapon: (weaponId) => {
+        const s = get();
+        if (s.status === "battle" || s.status === "ended") return;
+        const weapon = s.ownedWeapons.find((item) => item.id === weaponId);
+        if (!weapon) return;
+        const previous = s.ownedWeapons.find((item) => item.id === s.equippedWeaponId);
+        const stats = { ...s.stats };
+        for (const [stat, amount] of Object.entries(previous?.statBonus ?? {}) as [StatKey, number][]) stats[stat] -= amount;
+        for (const [stat, amount] of Object.entries(weapon.statBonus ?? {}) as [StatKey, number][]) stats[stat] += amount;
+        set({ equippedWeaponId: weapon.id, weaponPower: weapon.power, stats, pendingWeaponPrompt: null });
+        get().addLog(`${weapon.name} 장착 · 공격 피해 +${weapon.power}${formatWeaponStatBonus(weapon.statBonus)}.`, "loot");
+      },
+
+      buyCharm: (charmId) => {
+        const s = get();
+        if (s.status !== "shop") return;
+        const offer = s.shopCharms?.find((charm) => charm.id === charmId);
+        if (!offer || offer.stock <= 0 || s.ownedCharms.some((charm) => charm.id === charmId)) return;
+        if (s.gold < offer.price) return get().addLog("골드가 부족하다.", "sys");
+        const charm: CharmItem = {
+          id: offer.id, name: offer.name, price: offer.price, value: offer.value, effects: offer.effects,
+        };
+        set({
+          gold: s.gold - offer.price,
+          ownedCharms: [...s.ownedCharms, charm],
+          shopCharms: s.shopCharms?.map((item) => item.id === charmId ? { ...item, stock: 0 } : item) ?? null,
+        });
+        get().addLog(`${charm.name} 구매 · ${formatCharmEffectSummary(charm.effects)}.`, "loot");
+        if (!s.equippedCharmId) get().equipCharm(charm.id);
+      },
+
+      equipCharm: (charmId) => {
+        const s = get();
+        if (s.status === "battle" || s.status === "ended") return;
+        const charm = s.ownedCharms.find((item) => item.id === charmId);
+        if (!charm || charm.id === s.equippedCharmId) return;
+        const previous = s.ownedCharms.find((item) => item.id === s.equippedCharmId);
+        const stats = { ...s.stats };
+        let maxHpDelta = 0;
+        let maxMpDelta = 0;
+        let luckDelta = 0;
+        const apply = (effects: CharmEffect[] | undefined, direction: 1 | -1) => {
+          for (const effect of effects ?? []) {
+            if (effect.kind === "stat") stats[effect.stat] += effect.amount * direction;
+            else if (effect.kind === "maxHp") maxHpDelta += effect.amount * direction;
+            else if (effect.kind === "maxMp") maxMpDelta += effect.amount * direction;
+            else luckDelta += effect.amount * direction;
+          }
+        };
+        apply(previous?.effects, -1);
+        apply(charm.effects, 1);
+        const maxHp = Math.max(1, s.maxHp + maxHpDelta);
+        const maxMp = Math.max(0, s.maxMp + maxMpDelta);
+        set({
+          equippedCharmId: charm.id,
+          stats,
+          maxHp,
+          hp: Math.max(0, Math.min(maxHp, s.hp + maxHpDelta)),
+          maxMp,
+          mp: Math.max(0, Math.min(maxMp, s.mp + maxMpDelta)),
+          luck: Math.max(0, s.luck + luckDelta),
+        });
+        get().addLog(`${charm.name} 장착 · ${formatCharmEffectSummary(charm.effects)}.`, "loot");
+      },
+
+      dismissWeaponPrompt: () => set({ pendingWeaponPrompt: null }),
+
+      sellWeapon: (weaponId) => {
+        const s = get();
+        if (s.status !== "shop" || weaponId === s.equippedWeaponId) return;
+        const weapon = s.ownedWeapons.find((item) => item.id === weaponId);
+        if (!weapon) return;
+        set({
+          ownedWeapons: s.ownedWeapons.filter((item) => item.id !== weaponId),
+          gold: s.gold + weapon.value,
+        });
+        get().addLog(`${weapon.name} 판매 · 골드 +${weapon.value}G.`, "loot");
+      },
+
       closeShop: () => set({
-        shopItems: null, status: "resolving",
+        shopItems: null, shopCharms: null, shopkeeper: null, status: "resolving",
         nodeResult: { logs: ["상점을 뒤로하고 길을 나선다."] },
       }),
 
@@ -516,6 +764,9 @@ export const useRun = create<RunState>()(
           const s = get();
           const enemy = spawnEnemy(s.level, s.seed, s.act, s.floor, false);
           enemy.name = outcome.battle.name;
+          const difficulty = 12 + (s.act - 1) * 2;
+          const openingRoll = rollBattleOpening(s.stats.body, s.luck, difficulty);
+          const rollLabel = openingRoll.outcome === "great" ? "크리티컬!" : openingRoll.outcome === "success" ? "성공!" : openingRoll.outcome === "fumble" ? "대실패!" : "실패!";
           set({
             status: "battle",
             battle: { enemy, turn: 1, log: [`${enemy.name}이(가) 길을 막아선다. 페이지가 흔들린다.`] },
@@ -523,6 +774,12 @@ export const useRun = create<RunState>()(
             activeEncounter: null,
             encounterOutcome: null,
           });
+          const battle = get().battle;
+          if (battle) set({ battle: {
+            ...battle,
+            openingRoll,
+            log: [...battle.log, `전투 전 판정 ${rollLabel} · d20 ${openingRoll.rolled} + 힘·행운 ${openingRoll.modifier} = ${openingRoll.total} / ${difficulty}${openingRoll.powerBonus ? ` · 공격력 +${openingRoll.powerBonus}` : ""}`],
+          } });
           return;
         }
         if (outcome.nextId) {
@@ -570,7 +827,7 @@ export const useRun = create<RunState>()(
           } catch { /* 읽을 수 없는 슬롯은 그대로 둔다. */ }
         }
       },
-      version: 9,
+      version: 13,
       storage: slotStorage,
       migrate: (persisted: any, version) => {
         const s = persisted;
@@ -633,15 +890,71 @@ export const useRun = create<RunState>()(
           s.interludeAct = s.interludeAct ?? null;
           s.finalDestination = s.finalDestination ?? null;
         }
+        if (version < 10) {
+          s.armorPower = s.armorPower ?? 0;
+          s.shopkeeper = s.shopkeeper ?? null;
+        }
+        if (version < 11) {
+          s.healthPotions = s.healthPotions ?? 1;
+          s.focusPotions = s.focusPotions ?? 1;
+          const legacyPower = s.weaponPower ?? 0;
+          s.ownedWeapons = Array.isArray(s.ownedWeapons) ? s.ownedWeapons : legacyPower > 0
+            ? [{ id: "legacy-equipped-weapon", name: "오래 써 온 무기", power: legacyPower, value: Math.max(6, legacyPower * 10) }]
+            : [];
+          s.equippedWeaponId = s.equippedWeaponId ?? (legacyPower > 0 ? "legacy-equipped-weapon" : null);
+        }
+        if (version < 12 && s.battle && !s.battle.openingRoll) {
+          const boss = s.current?.type === "boss" || s.floor === FLOORS_PER_ACT;
+          const difficulty = boss ? 14 + ((s.act ?? 1) - 1) * 2 : s.current?.type === "elite" ? 13 : 10;
+          s.battle.openingRoll = rollBattleOpening(s.stats?.body ?? INITIAL_STATS.body, s.luck ?? 0, difficulty);
+        }
+        if (version < 13) {
+          s.ownedCharms = Array.isArray(s.ownedCharms) ? s.ownedCharms : [];
+          s.equippedCharmId = s.equippedCharmId ?? null;
+          s.shopCharms = s.shopCharms ?? null;
+          s.pendingWeaponPrompt = null;
+          if (Array.isArray(s.shopItems)) {
+            const definitions = [...SHOP_POOL, ...SPIRIT_SHOP_POOL];
+            s.shopItems = s.shopItems.map((item: ShopItem) => {
+              const definition = definitions.find((candidate) => candidate.id === item.id);
+              return definition ? { ...definition, ...item, statBonus: item.statBonus ?? definition.statBonus } : item;
+            });
+          }
+          if (s.status === "shop" && !s.shopCharms) {
+            s.shopCharms = buildCharmStock(s.ownedCharms.map((charm: CharmItem) => charm.id));
+          }
+          const weapons: WeaponItem[] = Array.isArray(s.ownedWeapons) ? s.ownedWeapons : [];
+          const equippedFirst = [...weapons].sort((a, b) => Number(b.id === s.equippedWeaponId) - Number(a.id === s.equippedWeaponId));
+          const seenModifiers = new Set<string>();
+          let duplicateWeaponGold = 0;
+          s.ownedWeapons = equippedFirst.filter((weapon) => {
+            const key = weaponModifierKey(weapon.power, weapon.statBonus);
+            if (seenModifiers.has(key)) {
+              duplicateWeaponGold += weapon.value ?? 0;
+              return false;
+            }
+            seenModifiers.add(key);
+            return true;
+          });
+          s.gold = (s.gold ?? 0) + duplicateWeaponGold;
+          if (Array.isArray(s.shopItems)) {
+            s.shopItems = s.shopItems.filter((item: ShopItem) => item.effect !== "weapon" || !s.ownedWeapons.some((weapon: WeaponItem) =>
+              weaponModifierKey(weapon.power, weapon.statBonus) === weaponModifierKey(item.amount, item.statBonus),
+            ));
+          }
+        }
         return s;
       },
       partialize: (s) => ({
         seed: s.seed, storyId: s.storyId, act: s.act, floor: s.floor, stats: s.stats,
         hp: s.hp, maxHp: s.maxHp, mp: s.mp, maxMp: s.maxMp,
-        weaponPower: s.weaponPower, luck: s.luck,
+        weaponPower: s.weaponPower, armorPower: s.armorPower, luck: s.luck,
+        healthPotions: s.healthPotions, focusPotions: s.focusPotions,
+        ownedWeapons: s.ownedWeapons, equippedWeaponId: s.equippedWeaponId,
+        ownedCharms: s.ownedCharms, equippedCharmId: s.equippedCharmId,
         gold: s.gold, level: s.level, exp: s.exp, statPoints: s.statPoints,
         choices: s.choices, current: s.current, status: s.status,
-        nodeResult: s.nodeResult, battle: s.battle, shopItems: s.shopItems,
+        nodeResult: s.nodeResult, battle: s.battle, shopItems: s.shopItems, shopCharms: s.shopCharms, shopkeeper: s.shopkeeper,
         activeEncounter: s.activeEncounter, encounterOutcome: s.encounterOutcome, seenEncounters: s.seenEncounters, autoBattle: s.autoBattle, prologueStep: s.prologueStep, interludeAct: s.interludeAct, finalDestination: s.finalDestination, endingRecorded: s.endingRecorded, endingResult: s.endingResult, affinity: s.affinity,
         flags: s.flags, logs: s.logs,
       }),
@@ -657,15 +970,131 @@ export const useRunHydrated = () =>
   );
 
 type Get = () => RunState;
-type Set = (p: Partial<RunState>) => void;
+type Set = (p: Partial<RunState> | ((state: RunState) => Partial<RunState>)) => void;
+
+function counterDamage(atk: number, will: number, armorPower: number, affinity: Record<NpcId, number>) {
+  return Math.max(1, atk - Math.floor(will * 0.3) - bondProtection(affinity) - armorPower + Math.floor(Math.random() * 4) - 2);
+}
+
+function modifyBossTelegraphDamage(battle: BattleState, incoming: number) {
+  return isLastBossTelegraph(battle) ? Math.ceil(incoming * 1.4) : incoming;
+}
+
+function useCombatPotion(get: Get, set: Set, type: "health" | "focus") {
+  const s = get();
+  const inBattle = s.status === "battle" && Boolean(s.battle);
+  if (s.status === "ended" || (s.status === "resolving" && s.nodeResult?.endsRun)) return;
+  if (inBattle && s.autoBattle) return;
+  if (type === "health" && (s.healthPotions <= 0 || s.hp >= s.maxHp)) return;
+  if (type === "focus" && (s.focusPotions <= 0 || s.mp >= s.maxMp)) return;
+
+  const healing = type === "health" ? Math.max(12, Math.ceil(s.maxHp / 5)) : 0;
+  const focus = type === "focus" ? Math.max(8, Math.ceil(s.maxMp / 5)) : 0;
+  const recoveredHp = Math.min(s.maxHp, s.hp + healing);
+  const recoveredMp = Math.min(s.maxMp, s.mp + focus);
+  const incoming = inBattle && s.battle
+    ? modifyBossTelegraphDamage(s.battle, counterDamage(s.battle.enemy.atk, s.stats.will, s.armorPower, s.affinity))
+    : 0;
+  const hp = recoveredHp - incoming;
+  const potionLabel = type === "health" ? "체력 물약" : "집중력 물약";
+  const recovery = type === "health" ? `체력 +${recoveredHp - s.hp}` : `집중력 +${recoveredMp - s.mp}`;
+  audio.sfx("heal");
+
+  if (!inBattle || !s.battle) {
+    set({
+      hp: recoveredHp,
+      mp: recoveredMp,
+      healthPotions: s.healthPotions - (type === "health" ? 1 : 0),
+      focusPotions: s.focusPotions - (type === "focus" ? 1 : 0),
+    });
+    get().addLog(`${potionLabel} 사용 · ${recovery}`, "heal");
+    return;
+  }
+
+  const logs = [
+    ...s.battle.log,
+    `${potionLabel} 사용 · ${recovery}`,
+    `${isLastBossTelegraph(s.battle) ? "마지막 장의 예고된 강공격" : `${s.battle.enemy.name}의 반격`} · 체력 -${incoming}`,
+  ];
+  audio.sfx("hit");
+
+  if (hp <= 0) {
+    set({
+      hp: 0,
+      mp: recoveredMp,
+      healthPotions: s.healthPotions - (type === "health" ? 1 : 0),
+      focusPotions: s.focusPotions - (type === "focus" ? 1 : 0),
+      battle: null,
+      status: "resolving",
+      nodeResult: { logs: [...logs, "물약을 비웠지만 반격을 버티지 못했다.", "…페이지가 찢어진다."], endsRun: "death" },
+    });
+    return;
+  }
+
+  set({
+    hp,
+    mp: recoveredMp,
+    healthPotions: s.healthPotions - (type === "health" ? 1 : 0),
+    focusPotions: s.focusPotions - (type === "focus" ? 1 : 0),
+    battle: { ...s.battle, turn: s.battle.turn + 1, log: logs },
+  });
+}
 
 function winBattle(get: Get, set: Set, logs: string[]) {
   const { battle, exp, level, gold, maxHp, maxMp } = get();
   if (!battle) return;
   const e = battle.enemy;
+  const isVictory = e.name.includes("마지막 장");
   const difficultyBonus = Math.max(2, Math.round(e.maxHp * 0.05 + e.atk * 0.4));
   const coinReward = e.gold + difficultyBonus;
   logs.push(`${e.name}을(를) 쓰러뜨렸다! +${e.exp}EXP +${coinReward}G (난이도 보정 +${difficultyBonus}G)`);
+
+  let lootGold = 0;
+  const lootRoll = Math.random();
+  const weaponDropChance = e.exp >= 70 ? 0.18 : 0.08;
+  if (lootRoll < 0.15) {
+    if (get().healthPotions < MAX_CONSUMABLES) {
+      set((s) => ({ healthPotions: s.healthPotions + 1 }));
+      logs.push("전리품 · 체력 물약 1개");
+    } else {
+      lootGold = 6;
+      logs.push("물약 가방이 가득 차 대신 6G를 챙겼다.");
+    }
+  } else if (lootRoll < 0.28) {
+    if (get().focusPotions < MAX_CONSUMABLES) {
+      set((s) => ({ focusPotions: s.focusPotions + 1 }));
+      logs.push("전리품 · 집중력 물약 1개");
+    } else {
+      lootGold = 6;
+      logs.push("물약 가방이 가득 차 대신 6G를 챙겼다.");
+    }
+  } else if (lootRoll < 0.28 + weaponDropChance) {
+    if (get().ownedWeapons.length < MAX_WEAPON_INVENTORY) {
+      const act = Math.min(3, Math.max(1, get().act));
+      const lootWeapons = [
+        { name: "회수한 철필", power: 1, value: 8, statBonus: { charm: 1 } },
+        { name: "흠집 난 제본검", power: 2, value: 18, statBonus: { insight: 1 } },
+        { name: "역무원의 절단검", power: 3, value: 32, statBonus: { will: 1 } },
+      ];
+      const weapon = lootWeapons[act - 1];
+      if (get().ownedWeapons.some((existing) => weaponModifierKey(existing.power, existing.statBonus) === weaponModifierKey(weapon.power, weapon.statBonus))) {
+        lootGold = 8;
+        logs.push("\uac19\uc740 \ubcf4\uc815 \ubb34\uae30\ub97c \ub300\uc2e0 8G\ub85c \ubc14\uafd8 \uac00\uc838\uac14\ub2e4.");
+      } else {
+        const lootId = `loot-${e.id}-${Date.now()}`;
+        set((s) => ({
+          ownedWeapons: [...s.ownedWeapons, { ...weapon, id: lootId }],
+          pendingWeaponPrompt: !isVictory && weapon.power > s.weaponPower
+            ? { weaponId: lootId, source: "loot" }
+            : s.pendingWeaponPrompt,
+        }));
+        logs.push(`전리품 · ${weapon.name} (공격 피해 +${weapon.power}${formatWeaponStatBonus(weapon.statBonus)})`);
+      }
+    } else {
+      lootGold = 8;
+      logs.push("무기 보관함이 가득 차 대신 8G를 챙겼다.");
+    }
+  }
 
   let newLevel = level;
   let remaining = exp + e.exp;
@@ -679,13 +1108,11 @@ function winBattle(get: Get, set: Set, logs: string[]) {
 
   if (gained > 0) audio.sfx("levelup");
 
-  const isVictory = battle.enemy.name.includes("마지막 장");
-
   set({
     battle: null,
     hp: Math.min(maxHp + bonusHp, get().hp + Math.floor(maxHp * 0.2)),
     mp: Math.min(maxMp + bonusMp, get().mp + Math.floor(maxMp * 0.2)),
-    gold: gold + coinReward,
+    gold: gold + coinReward + lootGold,
     exp: remaining,
     level: newLevel,
     maxHp: maxHp + bonusHp,

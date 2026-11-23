@@ -1,39 +1,124 @@
 import { getShopArt } from "../data/artLibrary";
 import { useRun } from "../store/useRun";
 import { STAT_LABEL } from "../types/game";
+import { formatCharmEffects, formatStatBonuses } from "../lib/equipment";
 
 export default function ShopPanel() {
-  const { shopItems, gold, weaponPower, luck, buyItem, closeShop } = useRun();
+  const {
+    shopItems, shopCharms, shopkeeper, gold, weaponPower, armorPower, luck,
+    healthPotions, focusPotions, ownedWeapons, equippedWeaponId, ownedCharms, equippedCharmId,
+    buyItem, buyCharm, equipWeapon, equipCharm, sellWeapon, closeShop,
+  } = useRun();
   if (!shopItems) return null;
+  const spirit = shopkeeper === "spirit";
+  const equippedWeapon = ownedWeapons.find((weapon) => weapon.id === equippedWeaponId);
+  const equippedCharm = ownedCharms.find((charm) => charm.id === equippedCharmId);
 
   return (
     <div className="action-panel shop-panel">
-      <div className="panel-heading"><div><span className="eyebrow">THE BOOKSELLER</span><h2>떠돌이 서적상</h2><p className="panel-description">필요한 것을 고르세요. 구입 즉시 적용됩니다.</p><p className="shop-current-bonuses">무기 피해 +{weaponPower} · 행운 주사위 +{luck}</p></div><span className="shop-gold">{gold} G</span></div>
-      {shopItems.map((it) => {
-        const owned = (it.effect === "luck" && luck >= 1) || (it.effect === "weapon" && weaponPower >= 6);
-        const art = getShopArt(it.id);
-        const effect = it.effect === "heal" ? `체력 +${it.amount}`
-          : it.effect === "mana" ? `집중력 +${it.amount}`
-          : it.effect === "stat" ? `${it.stat ? STAT_LABEL[it.stat] : "능력치"} +${it.amount}`
-          : it.effect === "weapon" ? owned ? "최대 강화" : `공격 피해 +${it.amount}`
-          : owned ? "이미 소지 중" : "주사위 +1 · 판정 +4%";
+      <div className="panel-heading">
+        <div>
+          <span className="eyebrow">{spirit ? "A WAYSTATION SPIRIT" : "WANDERING MERCHANT"}</span>
+          <h2>{spirit ? "역의 정령" : "떠돌이 상인"}</h2>
+          <p className="panel-description">
+            {spirit ? "열차가 지나간 자리에 남은 정령이 작은 보급품을 내놓는다." : "막마다 더 나은 무기를 구할 수 있어요. 물약은 필요할 때 사용할 수 있어요."}
+          </p>
+          <p className="shop-current-bonuses">
+            {equippedWeapon?.name ?? "맨손"} · 공격 피해 +{weaponPower} · 피격 피해 -{armorPower} · 행운 +{luck}
+            {equippedCharm && ` · 부적 ${equippedCharm.name}`}
+          </p>
+        </div>
+        <span className="shop-gold">{gold} G</span>
+      </div>
+
+      {shopItems.map((item) => {
+        const bagFull = (item.effect === "heal" && healthPotions >= 5)
+          || (item.effect === "mana" && focusPotions >= 5)
+          || (item.effect === "weapon" && ownedWeapons.length >= 8);
+        const maxed = (item.effect === "luck" && luck >= 1) || (item.effect === "armor" && armorPower >= 3);
+        const outOfStock = item.stock !== undefined && item.stock <= 0;
+        const art = getShopArt(item.id);
+        const effect = item.effect === "heal" ? `체력 한 칸 회복 · 보유 ${healthPotions}/5`
+          : item.effect === "mana" ? `집중력 한 칸 회복 · 보유 ${focusPotions}/5`
+          : item.effect === "stat" ? `${item.stat ? STAT_LABEL[item.stat] : "능력치"} +${item.amount}`
+          : item.effect === "weapon" ? bagFull ? "무기 보관함이 가득 참" : `공격 피해 +${item.amount}${formatStatBonuses(item.statBonus).length ? ` · ${formatStatBonuses(item.statBonus).join(" · ")}` : ""} · 장착·판매 가능`
+          : item.effect === "armor" ? maxed ? "최대 강화" : `피격 피해 -${item.amount}`
+          : maxed ? "이미 소지 중" : "주사위 +1 · 판정 +4%";
+
         return (
           <button
-            key={it.id}
-            onClick={() => buyItem(it.id)}
-            disabled={gold < it.price || owned}
+            key={item.id}
+            onClick={() => buyItem(item.id)}
+            disabled={gold < item.price || bagFull || maxed || outOfStock}
             className="story-button shop-item"
           >
             <span className="shop-item__content">
               {art && <span className="shop-item__icon-frame"><img className="shop-item__icon" src={art.src} alt="" width="52" height="52" loading="lazy" decoding="async" /></span>}
-              <span className="shop-item__details"><span className="shop-item__name">{it.name}</span><small className="shop-effect">{effect}</small></span>
+              <span className="shop-item__details"><span className="shop-item__name">{item.name}</span><small className="shop-effect">{outOfStock ? "품절" : effect}</small></span>
             </span>
-            <span className="shop-gold">{it.price} G</span>
+            <span className="shop-gold">{item.price} G</span>
           </button>
         );
       })}
+
+      {shopCharms && shopCharms.length > 0 && <section className="charm-market">
+        <div className="charm-market__heading"><h3>떠돌이 부적</h3><span>이번 상점의 무작위 물품</span></div>
+        {shopCharms.map((charm) => {
+          const outOfStock = charm.stock <= 0;
+          const art = getShopArt(charm.id);
+          return (
+            <button key={charm.id} onClick={() => buyCharm(charm.id)} disabled={gold < charm.price || outOfStock} className="story-button shop-item charm-offer">
+              <span className="shop-item__content">
+                {art && <span className="shop-item__icon-frame"><img className="shop-item__icon" src={art.src} alt="" width="52" height="52" loading="lazy" decoding="async" /></span>}
+                <span className="shop-item__details"><span className="shop-item__name">{charm.name}</span><small className="shop-effect">{outOfStock ? "품절" : formatCharmEffects(charm.effects).join(" · ")}</small></span>
+              </span>
+              <span className="shop-gold">{charm.price} G</span>
+            </button>
+          );
+        })}
+      </section>}
+
+      <details className="weapon-storage">
+        <summary>무기 보관함 · {ownedWeapons.length}개</summary>
+        {ownedWeapons.length === 0 ? <p className="weapon-storage__empty">무기는 전투에서 얻거나 상점에서 살 수 있어요.</p> : (
+          <div className="weapon-storage__list">
+            {ownedWeapons.map((weapon) => {
+              const equipped = weapon.id === equippedWeaponId;
+              return (
+                <div className="weapon-row" key={weapon.id}>
+                  <span className="weapon-row__copy"><strong>{weapon.name}</strong><small>공격 피해 +{weapon.power}{formatStatBonuses(weapon.statBonus).length ? ` · ${formatStatBonuses(weapon.statBonus).join(" · ")}` : ""} · 판매가 {weapon.value}G</small></span>
+                  {equipped ? <span className="weapon-row__equipped">장착 중</span> : (
+                    <span className="weapon-row__actions">
+                      <button className="text-link" onClick={() => equipWeapon(weapon.id)}>장착</button>
+                      <button className="text-link" onClick={() => sellWeapon(weapon.id)}>판매</button>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </details>
+
+      <details className="weapon-storage" open={ownedCharms.length > 0 && !equippedCharmId}>
+        <summary>부적 보관함 · {ownedCharms.length}개{equippedCharm ? ` · 장착 ${equippedCharm.name}` : ""}</summary>
+        {ownedCharms.length === 0 ? <p className="weapon-storage__empty">상점에 무작위로 나타나는 부적을 모아 장착할 수 있어요.</p> : (
+          <div className="weapon-storage__list">
+            {ownedCharms.map((charm) => {
+              const equipped = charm.id === equippedCharmId;
+              return (
+                <div className="weapon-row" key={charm.id}>
+                  <span className="weapon-row__copy"><strong>{charm.name}</strong><small>{formatCharmEffects(charm.effects).join(" · ")}</small></span>
+                  {equipped ? <span className="weapon-row__equipped">장착 중</span> : <button className="text-link" onClick={() => equipCharm(charm.id)}>장착</button>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </details>
+
       <button onClick={closeShop} className="story-button story-button--primary justify-center">
-        상점을 떠난다
+        {spirit ? "정령 곁을 떠난다" : "상인을 떠난다"}
       </button>
     </div>
   );

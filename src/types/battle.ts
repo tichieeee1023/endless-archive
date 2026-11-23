@@ -12,4 +12,13 @@ export interface BattleState {
   enemy: Enemy;
   turn: number;
   log: string[];
+  nextAttackBonus?: number;
+  openingRoll?: {
+    rolled: number;
+    modifier: number;
+    total: number;
+    difficulty: number;
+    outcome: "fumble" | "failed" | "success" | "great";
+    powerBonus: number;
+  };
 }

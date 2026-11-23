@@ -10,7 +10,9 @@ export default function InterludeScreen() {
   const interlude = storyId === "unnamed_station"
     ? unnamedStationInterludeFor(interludeAct ?? act, flags)
     : interludeFor(interludeAct ?? act, flags);
-  const art = interlude.act === 2 ? EXTRA_ART.act_transition_2 : EXTRA_ART.act_transition_3;
+  const art = storyId === "unnamed_station"
+    ? interlude.act === 2 ? EXTRA_ART.story_erased_record : EXTRA_ART.story_unfulfilled_promise
+    : interlude.act === 2 ? EXTRA_ART.act_transition_2 : EXTRA_ART.act_transition_3;
 
   return (
     <main className="chapter-screen">

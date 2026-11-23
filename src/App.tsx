@@ -13,6 +13,7 @@ import StorySelect from "./components/StorySelect";
 import StoryOpeningScreen from "./components/StoryOpeningScreen";
 import InterludeScreen from "./components/InterludeScreen";
 import FinalChoiceScreen from "./components/FinalChoiceScreen";
+import WeaponPromptModal from "./components/WeaponPromptModal";
 import { seedFromUrl } from "./lib/seedFromUrl";
 import { audio } from "./lib/audio";
 import { useAudio } from "./store/useAudio";
@@ -73,6 +74,7 @@ export default function App() {
         {status === "rel" ? <EventModal /> : <><SceneView /><ActionPanel /></>}
       </main>
       <LevelUpModal />
+      <WeaponPromptModal />
     </div>
   );
 }

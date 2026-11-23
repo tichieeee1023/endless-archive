@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useRun } from "../store/useRun";
-import trainCorridor from "../assets/illustrations/train-corridor.png";
+import trainCorridor from "../assets/illustrations/train-corridor.webp";
 
 export default function LogView() {
   const logs = useRun((s) => s.logs);

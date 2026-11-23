@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "apple-touch-icon-v2.png"],
+      includeAssets: ["icon.svg", "apple-touch-icon-180x180.png"],
       manifest: {
         name: "종점 없는 서고",
         short_name: "무한서고",

@@ -9,10 +9,15 @@ export function successChance(
   return Math.max(5, Math.min(95, raw));
 }
 
-export function rollBattleDamage(base: number, weaponPower: number, luck: number) {
-  const rolled = Math.floor(Math.random() * 6) + 1;
-  const total = Math.min(6, rolled + luck);
-  const critical = total === 6;
-  const damage = Math.max(1, base + total - 3 + weaponPower + (critical ? Math.max(3, Math.floor(base * 0.25)) : 0));
-  return { rolled, total, critical, damage };
+export function rollBattleOpening(body: number, luck: number, difficulty: number) {
+  const rolled = Math.floor(Math.random() * 20) + 1;
+  const modifier = body + luck * 2;
+  const total = rolled + modifier;
+  const outcome = rolled === 1 ? "fumble"
+    : rolled === 20 || total >= difficulty + 6 ? "great"
+    : total >= difficulty ? "success" : "failed";
+  const powerBonus = outcome === "great"
+    ? Math.max(8, Math.floor(body * 1.2) + 3)
+    : outcome === "success" ? Math.max(4, Math.floor(body * 0.75) + 2) : 0;
+  return { rolled, modifier, total, difficulty, outcome, powerBonus } as const;
 }

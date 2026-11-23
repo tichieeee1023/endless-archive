@@ -1,4 +1,4 @@
-type SfxName = "attack" | "hit" | "heal" | "levelup" | "event" | "ending" | "click";
+type SfxName = "attack" | "hit" | "heal" | "levelup" | "event" | "ending" | "click" | "dice";
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -72,6 +72,10 @@ class AudioManager {
         setTimeout(() => this.tone(523, 0.8, "triangle", 0.25), 300);
         break;
       case "click": this.tone(660, 0.03, "sine", 0.06); break;
+      case "dice":
+        this.tone(740, 0.12, "sine", 0.18);
+        setTimeout(() => this.tone(988, 0.2, "sine", 0.16), 90);
+        break;
     }
   }
 

@@ -1,6 +1,6 @@
 import { STORY_BOOKS } from "../data/stories";
 import { useRun } from "../store/useRun";
-import trainCorridor from "../assets/illustrations/train-corridor.png";
+import trainCorridor from "../assets/illustrations/train-corridor.webp";
 
 export default function StorySelect() {
   const selectStory = useRun((s) => s.selectStory);

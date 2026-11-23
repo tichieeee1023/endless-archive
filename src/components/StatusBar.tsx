@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRun } from "../store/useRun";
 import { useAudio } from "../store/useAudio";
 import { STAT_KEYS, STAT_LABEL, STAT_DESCRIPTION, type StatKey } from "../types/game";
 import ArchiveModal from "./ArchiveModal";
+import InventoryModal from "./InventoryModal";
 
 type MeterTone = "health" | "focus" | StatKey;
 
@@ -27,11 +28,13 @@ function DotMeter({ label, value, max, showMax = false, tone = "default" }: {
 }
 
 export default function StatusBar() {
-  const { hp, maxHp, mp, maxMp, gold, level, act, floor, stats, startRun } = useRun();
+  const { hp, maxHp, mp, maxMp, gold, level, act, floor, stats, healthPotions, focusPotions, ownedWeapons, ownedCharms, startRun } = useRun();
   const { sfxEnabled, bgmEnabled, toggleSfx, toggleBgm } = useAudio();
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const closeInventory = useCallback(() => setInventoryOpen(false), []);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -58,6 +61,7 @@ export default function StatusBar() {
           <div className="brand"><span>AN UNFINISHED STORY</span><strong>종점 없는 서고</strong></div>
           <div className="header-actions">
             <button type="button" className="stats-shortcut" onClick={() => setSettingsOpen(true)} aria-label="능력치 보기" title="능력치">능력</button>
+            <button type="button" className="inventory-shortcut" onClick={() => setInventoryOpen(true)} aria-label={`소지품 열기, 아이템 ${healthPotions + focusPotions + ownedWeapons.length + ownedCharms.length}개`} title="소지품">가방 <small>{healthPotions + focusPotions + ownedWeapons.length + ownedCharms.length}</small></button>
             <button type="button" onClick={() => setArchiveOpen(true)} aria-label="서고 열기" title="서고">▤</button>
             <button type="button" onClick={() => setSettingsOpen(true)} aria-label="설정 열기" title="설정">⚙</button>
           </div>
@@ -111,6 +115,7 @@ export default function StatusBar() {
           </section>
         </div>
       )}
+      <InventoryModal open={inventoryOpen} onClose={closeInventory} />
       <ArchiveModal open={archiveOpen} onClose={() => setArchiveOpen(false)} />
     </>
   );

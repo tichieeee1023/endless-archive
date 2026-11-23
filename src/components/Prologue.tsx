@@ -1,7 +1,9 @@
 import { PROLOGUE_CHOICES, PROLOGUE_PAGES } from "../data/prologue";
 import { STAT_LABEL } from "../types/game";
 import { useRun } from "../store/useRun";
-import trainCorridor from "../assets/illustrations/train-corridor.png";
+import trainCorridor from "../assets/illustrations/train-corridor.webp";
+import { EXTRA_ART } from "../data/extraArt";
+import ExtraArt from "./ExtraArt";
 import { formatNarrative } from "../lib/formatNarrative";
 
 export default function Prologue() {
@@ -18,7 +20,7 @@ export default function Prologue() {
         <header className="prologue-topline">
           <span>종점 없는 서고</span><span>PROLOGUE · {String(Math.min(step + 1, PROLOGUE_PAGES.length)).padStart(2, "0")}</span>
         </header>
-        <div className="prologue-visual"><img src={trainCorridor} alt="끝이 보이지 않는 열차 복도" /></div>
+        <div className="prologue-visual"><ExtraArt src={EXTRA_ART.story_dawn_moon_station} fallback={trainCorridor} /></div>
         <div className="prologue-content" key={step}>
           <p className="section-kicker">THE BEGINNING OF A STORY</p>
           <h1>{choosing ? "어렴풋한 기억의 방향" : page.title}</h1>

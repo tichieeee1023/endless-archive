@@ -14,7 +14,7 @@ export default function StoryOpeningScreen() {
         <header className="prologue-topline">
           <span>이름 없는 역</span><span>THE MAIN STORY · 01</span>
         </header>
-        <div className="chapter-visual"><ExtraArt src={EXTRA_ART.act_transition_1} className="chapter-illustration" /></div>
+        <div className="chapter-visual"><ExtraArt src={EXTRA_ART.story_train_ticket} className="chapter-illustration" /></div>
         <div className="chapter-content">
           <p className="section-kicker">THE FIRST PAGE OF THIS BOOK</p>
           <h1>{story.title}</h1>
