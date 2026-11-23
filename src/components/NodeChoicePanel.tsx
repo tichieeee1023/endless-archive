@@ -1,5 +1,7 @@
 import { useRun } from "../store/useRun";
 import type { NodeType } from "../types/game";
+import { nodeArt } from "../data/extraArtMapping";
+import ExtraArt from "./ExtraArt";
 
 const TYPE_STYLE: Record<NodeType, string> = {
   battle: "위험", elite: "강한 적", event: "만남과 이야기", shop: "서적상",
@@ -21,7 +23,7 @@ export default function NodeChoicePanel() {
             onClick={() => selectNode(n)}
             className="destination"
           >
-            <span className="destination__icon">{n.type === "event" ? "✧" : n.type === "rest" ? "☾" : n.type === "battle" || n.type === "elite" || n.type === "boss" ? "†" : "◇"}</span>
+            <span className="destination__icon" aria-hidden="true">✧<ExtraArt src={nodeArt(n.type)} className="extra-art--node" /></span>
             <span className="destination__body"><span className="destination__tag">{t}</span><strong>{n.title}</strong><small>{n.preview}</small></span>
             <span className="destination__arrow">↗</span>
           </button>

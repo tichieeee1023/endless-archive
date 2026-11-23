@@ -13,6 +13,10 @@ export default function ActionPanel() {
     case "resolving": return <ResolvePanel />;
     case "rel":
     case "prologue":
+    case "storySelect":
+    case "storyOpening":
+    case "interlude":
+    case "finalChoice":
     case "levelup":
     case "ended":
       return null;

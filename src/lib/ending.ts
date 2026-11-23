@@ -19,6 +19,8 @@ export interface RunEndings {
   bonuses: EndingResult[];
 }
 
+export type FinalDestination = "return" | "stay" | "depart";
+
 const NPC_IDS: NpcId[] = ["rael", "seon", "kairu"];
 
 const ROUTE_ENDINGS: Record<NpcId, Record<RouteGrade, Omit<RouteEnding, "npcId" | "grade">>> = {
@@ -55,8 +57,65 @@ const JOURNEY: EndingResult = {
 };
 const TRUTH: EndingResult = {
   id: "true_end", npcId: null, title: "쓰이지 않은 첫 문장",
-  text: "처음 눈을 떴던 플랫폼에 세 사람의 목소리가 차례로 닿는다. 그들이 택한 결말은 서로 다른 페이지에 있지만, 모두 당신과 그들이 직접 고른 문장이었다.\n\n차표의 빈칸에 더는 목적지를 적을 필요가 없다. 돌아갈 수 있는 곳이 하나가 아니라는 것을 이제 알기 때문이다.\n\n수첩의 마지막 장 너머에서 누군가 조용히 웃는다.\n\n“이제 어떤 이야기를 쓰시겠습니까?”\n\n당신은 펜을 든다. 첫 문장은 아직 쓰이지 않았다.",
+  text: "새벽역의 간판에 이름이 돌아온다. 두 장의 차표가 맞물리고, 오래전 당신이 남긴 약속도 온전한 문장이 된다. 당신은 누군가를 찾아 이 열차에 올랐다. 그 이유를 잊게 된 건 도망치기 위해서가 아니라, 다시 만나 직접 답하기 위해서였다.\n\n플랫폼에 선 사람은 당신이 늦었다고 탓하지 않는다. 당신은 그날 끝내 하지 못했던 말을 건넨다. 이제 새벽역은 누구도 지워지지 않고 도착할 수 있는 곳이 된다.\n\n당신은 차표에 역 이름을 적는다. 이번에는 두 사람이 함께 내린다.",
 };
+
+const RETURN_HOME: EndingResult = {
+  id: "journey_return", npcId: null, title: "다시 돌아갈 역",
+  text: "새벽역의 이름을 차표에 적는다. 플랫폼에는 누군가가 기다리고 있지만, 얼굴과 약속의 마지막 문장은 아직 흐릿하다. 기억을 전부 되찾지 못했어도 이번에는 모른 척 지나치지 않기로 한다.\n\n열차는 당신이 내린 뒤에도 다음 이야기를 향해 달린다.",
+};
+const STAY_ABOARD: EndingResult = {
+  id: "journey_stay", npcId: null, title: "이야기를 잇는 사람",
+  text: "당신은 새벽역에 남아 낡은 간판의 불을 켠다. 이름을 잃고 헤매는 승객이 다음에 찾아오면, 이번에는 혼자 기다리지 않도록.\n\n열차가 떠난 뒤에도 역에는 따뜻한 불빛 하나가 남는다.",
+};
+const NEW_DESTINATION: EndingResult = {
+  id: "journey_depart", npcId: null, title: "아직 없는 목적지",
+  text: "당신은 새벽역의 간판을 다시 비워 둔다. 약속의 끝은 지키되, 누군가가 반드시 한 곳에 머물러야 하는 건 아니라고 생각한다. 빈 차표에는 역 이름 대신 새로운 방향을 적는다.\n\n플랫폼을 떠난 뒤, 지도에 없던 길이 천천히 모습을 드러낸다.",
+};
+
+const EVENT_ECHOES: [string, string][] = [
+  ["event_window_station_named", "창문 너머의 역은 아직 멀리 있지만, 이번에는 그 이름을 잊지 않도록 차표에 적어 둔다."],
+  ["event_page_reader_met", "기다리던 독자가 남긴 문장이 수첩에서 다시 이어진다. ‘기다리는 동안에도 이야기는 계속된다.’"],
+  ["event_letter_delivered", "차표 사이에 끼워 둔 편지에는 마침내 도착 날짜가 적혔다."],
+  ["event_ticket_station_found", "차표의 화살표가 가리킨 승강장에는 누군가 돌아올 자리가 남아 있다."],
+  ["event_minute_restored", "되돌려 놓은 일 분이 열차의 시계마다 흐른다."],
+  ["event_lamp_guided", "어딘가에서 누군가가 당신이 비춘 불빛을 따라 길을 찾는다."],
+  ["event_parcel_delivered", "첫차를 놓친 이에게 맡긴 소포에는 ‘도착’이라는 도장이 남았다."],
+  ["event_silent_car_answered", "창문에 적은 안부가 객차 안의 목소리를 되돌려 놓았다."],
+  ["event_book_open_end", "다음 독자를 위해 비워 둔 페이지가 새로운 문장을 기다린다."],
+  ["event_book_finished", "당신이 끝맺은 책에는 마침내 제목이 생겼다."],
+  ["event_schedule_torn", "찢어 버린 시간표의 마지막 숫자는 끝내 돌아오지 않았다."],
+  ["event_manuscript_damaged", "번져 버린 원고의 끝 몇 줄은 읽을 수 없게 되었지만, 남은 페이지는 살아남았다."],
+  ["station_event_first_letter", "시간표 여백에서 옮겨 둔 첫 획이 차표의 빈칸과 맞아떨어진다."],
+  ["station_event_kept_promise", "창문에 비친 약속을 되찾았다. 당신은 도망친 게 아니라 길을 찾으러 떠났었다."],
+  ["station_event_full_name", "새벽역의 이름을 삼킨 형체는 사라졌다. 이제 그곳의 간판은 다시 빛난다."],
+  ["station_event_guest_safe", "개찰구 너머로 승객을 먼저 보냈다. 두 사람은 같은 플랫폼에 도착했다."],
+];
+
+function addJourneyEchoes(ending: EndingResult, flags: Set<string>): EndingResult {
+  const stationEchoes = EVENT_ECHOES.filter(([flag]) => flag.startsWith("station_event_") && flags.has(flag));
+  const commonEchoes = EVENT_ECHOES.filter(([flag]) => !flag.startsWith("station_event_") && flags.has(flag));
+  const echoes = [...stationEchoes, ...commonEchoes].slice(0, 2).map(([, text]) => text);
+  const firstInterlude = flags.has("station_act1_show_ticket")
+    ? "맞물린 차표 두 장이 새벽역의 이름을 되살렸다."
+    : flags.has("station_act1_ask_conductor")
+      ? "차장이 건넨 차표 반쪽에는 당신이 떠났던 밤의 기록이 남아 있었다."
+      : flags.has("station_act1_copy_record")
+        ? "수첩에 옮겨 적은 승차 기록은 당신이 왜 이 열차에 올랐는지 잊지 않게 했다."
+        : flags.has("interlude_act1_asked")
+          ? "차장에게 답을 재촉했던 질문은 끝내 사라지지 않았다."
+          : "";
+  const interlude = flags.has("station_act2_hold_ticket")
+    ? "두 장의 차표를 꼭 쥐고, 이번에는 함께 내리겠다고 다짐했다."
+    : flags.has("station_act2_recall_reason")
+      ? "떠났던 이유를 기억할 준비를 마쳤다. 약속을 지키려면 그날의 자신도 마주해야 했다."
+      : flags.has("station_act2_speak_name")
+        ? "새벽역이라는 이름을 소리 내어 불렀다. 이제 길을 잃지 않을 것이다."
+        : flags.has("interlude_act2_read")
+          ? "자신의 책을 첫 장부터 읽은 끝에, 비 오는 밤의 장면이 조금 더 또렷해졌다."
+          : "";
+  return { ...ending, text: [ending.text, firstInterlude, interlude, ...echoes].filter(Boolean).join("\n\n") };
+}
 
 /** Only mutually-exclusive, explicitly chosen story flags can finish a route. */
 export function resolveRouteEndings(flags: string[]): RouteEnding[] {
@@ -68,15 +127,30 @@ export function resolveRouteEndings(flags: string[]): RouteEnding[] {
   });
 }
 
-export function resolveRunEndings(flags: string[], victory: boolean, previouslyCollected: string[] = []): RunEndings {
+export function resolveRunEndings(flags: string[], victory: boolean): RunEndings {
   const known = new Set(flags);
   const routes = resolveRouteEndings(flags);
   const bonuses = routes.flatMap((route) =>
     route.grade === "happy" && known.has(`romance_${route.npcId}_promise`)
       ? [BONUS_ENDINGS[route.npcId]] : [],
   );
-  const collected = new Set([...previouslyCollected, ...routes.map((route) => route.id)]);
-  const allHappy = NPC_IDS.every((npcId) => collected.has(`${npcId}_route_happy`));
-  const journey = !victory ? DEATH : allHappy ? TRUTH : JOURNEY;
+  let journey = DEATH;
+  if (victory) {
+    if (known.has("ending_stay")) journey = STAY_ABOARD;
+    else if (known.has("ending_depart")) journey = NEW_DESTINATION;
+    else if (known.has("ending_return")) {
+      const foundThePromise = (
+        known.has("station_act1_show_ticket") && known.has("station_act2_hold_ticket")
+      ) || (
+        known.has("station_act1_ask_conductor") && known.has("station_act2_speak_name")
+      ) || (
+        known.has("station_act1_copy_record") && known.has("station_act2_recall_reason")
+      ) || (
+        known.has("station_event_old_promise") && known.has("station_event_full_name")
+      );
+      journey = foundThePromise ? TRUTH : RETURN_HOME;
+    } else journey = JOURNEY;
+    if (journey.id !== "death" && journey.id !== "solo") journey = addJourneyEchoes(journey, known);
+  }
   return { journey, routes, bonuses };
 }

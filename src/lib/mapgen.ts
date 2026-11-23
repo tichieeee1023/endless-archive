@@ -3,8 +3,8 @@ import { mulberry32, hashSeed } from "./rng";
 
 const NODE_POOL: NodeType[] = [
   "battle", "battle", "battle",
-  "event", "event", "event", "event", "event",
-  "elite", "shop", "rest", "treasure",
+  "event", "event", "event", "event", "event", "event", "event",
+  "elite", "shop", "shop", "rest", "treasure",
 ];
 
 const FLAVOR: Record<NodeType, { titles: string[]; previews: string[] }> = {
@@ -65,7 +65,7 @@ export function generateChoices(
   if (floor === maxFloor) return [makeNode(rng, "boss", act, floor, 0)];
 
   const mid = Math.floor(maxFloor / 2);
-  const forced: NodeType | null = floor === mid ? "shop" : floor === mid + 1 ? "rest"
+  const forced: NodeType | null = floor === mid && act !== 2 ? "shop" : floor === mid + 1 ? "rest"
     : [1, 3, 6].includes(floor) ? "event" : null;
 
   const count = floor === 1 ? 2 : rng() < 0.5 ? 2 : 3;

@@ -7,13 +7,16 @@ import { audio } from "../lib/audio";
 import ArchiveModal from "./ArchiveModal";
 import { getEndingArt } from "../data/artLibrary";
 import ArtFrame from "./ArtFrame";
+import { formatNarrative } from "../lib/formatNarrative";
+import { EXTRA_ART } from "../data/extraArt";
+import ExtraArt from "./ExtraArt";
 
 export default function EndingScreen() {
   const startRun = useRun((s) => s.startRun);
   const { addRun, addEnding } = useMeta();
   const [resolution] = useState(() => {
     const run = useRun.getState();
-    return resolveRunEndings(run.flags, run.nodeResult?.endsRun === "victory", useMeta.getState().endings);
+    return resolveRunEndings(run.flags, run.nodeResult?.endsRun === "victory");
   });
   // An old saved ending is kept readable after the v6 → v7 migration.
   const [ending] = useState(() => useRun.getState().endingResult ?? resolution.journey);
@@ -40,8 +43,9 @@ export default function EndingScreen() {
       <p className="ending-kind">여정의 결말</p>
       <h1>{ending.title}</h1>
       <div className="ending-rule" aria-hidden="true">✦</div>
+      <ExtraArt src={EXTRA_ART.scene_journey_end} className="extra-art--ending" />
       <ArtFrame art={getEndingArt(ending.id)} variant="ending" eager />
-      <p className="ending-main-copy">{ending.text}</p>
+      <p className="ending-main-copy">{formatNarrative(ending.text)}</p>
       {resolution.routes.length > 0 ? (
         <section className="ending-summary" aria-label="이번 여정의 인물 사건">
           <h2>인물들의 사건 결말</h2>
@@ -50,7 +54,7 @@ export default function EndingScreen() {
             <article className="ending-summary__item" key={route.id}>
               <div className="ending-summary__heading"><span className={`ending-card__grade ending-card__grade--${route.grade}`}>{route.grade.toUpperCase()}</span><strong>{NPCS[route.npcId].name} · {route.title}</strong></div>
               <ArtFrame art={getEndingArt(route.id)} variant="ending" />
-              <p>{route.text}</p>
+              <p>{formatNarrative(route.text)}</p>
             </article>
           ))}
         </section>
@@ -65,7 +69,7 @@ export default function EndingScreen() {
             <article className="ending-summary__item" key={bonus.id}>
               <div className="ending-summary__heading"><span className="ending-card__grade ending-card__grade--bonus">추가</span><strong>{bonus.title}</strong></div>
               <ArtFrame art={getEndingArt(bonus.id)} variant="ending" />
-              <p>{bonus.text}</p>
+              <p>{formatNarrative(bonus.text)}</p>
             </article>
           ))}
         </section>

@@ -6,9 +6,21 @@ const ts = require('typescript');
 const { test, assert, choose, run, useRun, localRequire } = require('./test-p1.cjs');
 const { ENDING_CATALOG } = localRequire('./src/data/endings.js');
 const { endingProgress, routeCatalogFor, bonusCatalogFor, legacyCollected } = localRequire('./src/lib/archiveView.js');
+const { useMeta } = localRequire('./src/store/useMeta.js');
 
 const project = path.resolve(__dirname, '..');
 const read = (name) => fs.readFileSync(path.join(project, name), 'utf8');
+
+test('viewed scenes, shop art and earned ending art are saved as discoveries', () => {
+  useMeta.setState({ collectedPages: [], endings: [], endingLog: {} });
+  run().startRun('art-discovery');
+  choose('rael_tea', 0);
+  assert.ok(useMeta.getState().collectedPages.includes('art:planned_02_3_cooling_tea'));
+  run().selectNode({ id: 'shop-test', type: 'shop', title: '상점', preview: '' });
+  assert.ok(useMeta.getState().collectedPages.includes('art:item_2_4_healing_potion'));
+  useMeta.getState().addEnding('rael_romance', '제목', '내용');
+  assert.ok(useMeta.getState().collectedPages.includes('art:cg_rael_4_romance_tea'));
+});
 
 test('P4 collection progress distinguishes journey, NPC stories and bonus endings without double-counting legacy', () => {
   assert.deepEqual(endingProgress([]), { collected: 0, total: 15 });
@@ -45,7 +57,7 @@ test('P4 outcome effects display actual resources after clamping, and preserve g
   assert.deepEqual(run().encounterOutcome.effects, ['체력 +6']);
   choose('train_letter_echo', 0);
   assert.equal(run().mp, 40);
-  assert.deepEqual(run().encounterOutcome.effects, ['내공 +1']);
+  assert.deepEqual(run().encounterOutcome.effects, ['집중력 +1']);
 });
 
 test('P4 shows actual negative resource changes and does not add phantom losses below minimum', () => {

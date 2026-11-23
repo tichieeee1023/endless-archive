@@ -728,6 +728,24 @@ export const EVENT_ART: Readonly<Record<string, string>> = {
   "train_lost_luggage": "reuse_01_3_lost_luggage",
   "train_unfinished_book": "planned_01_2_unfinished_book",
   "train_platform_lamp": "reuse_01_4_lantern_platform",
+  "train_window_station": "reuse_02_1_station_with_train",
+  "train_blank_page": "planned_01_2_unfinished_book",
+  "train_paper_moth": "reuse_03_4_ruined_library",
+  "train_red_thread": "reuse_04_4_archway",
+  "train_sealed_parcel": "reuse_01_3_lost_luggage",
+  "train_silent_car": "planned_02_4_night_train_window",
+  "train_window_station_echo": "reuse_02_4_ruined_window",
+  "train_page_reader": "planned_04_3_unwritten_ending",
+  "train_last_broadcast": "planned_02_2_conductors_logbook",
+  "station_timetable": "planned_02_2_conductors_logbook",
+  "station_timetable_margin": "reuse_01_2_reverse_timetable",
+  "station_ink_guard": "reuse_03_4_ruined_library",
+  "station_window_echo": "reuse_02_1_station_with_train",
+  "station_window_reply": "planned_06_1_letter_reply",
+  "station_window_shadow": "reuse_02_4_ruined_window",
+  "station_gate_name": "planned_06_3_nonexistent_platform",
+  "station_gate_answer": "planned_01_4_archive_bookshelf",
+  "station_name_eater": "planned_04_4_book_notebook",
   "rael_encounter_1": "planned_06_4_corridor_end_door",
   "rael_encounter_2": "cg_rael_1_wrist_mark",
   "rael_registry": "planned_02_2_conductors_logbook",
@@ -754,6 +772,9 @@ export const ENDING_ART: Readonly<Record<string, string>> = {
   "death": "planned_06_4_corridor_end_door",
   "solo": "planned_01_4_archive_bookshelf",
   "true_end": "planned_04_4_book_notebook",
+  "journey_return": "planned_06_1_letter_reply",
+  "journey_stay": "planned_02_2_conductors_logbook",
+  "journey_depart": "planned_04_4_book_notebook",
   "rael_route_bad": "planned_02_1_engine_door",
   "rael_route_normal": "planned_02_2_conductors_logbook",
   "rael_route_happy": "cg_rael_3_happy",
@@ -773,6 +794,8 @@ export const ENDING_ART: Readonly<Record<string, string>> = {
 export const SHOP_ART: Readonly<Record<string, string>> = {
   "potion": "item_2_4_healing_potion",
   "mana": "item_1_5_quill_ink",
+  "ink_blade": "item_1_3_cracked_sword",
+  "lucky_die": "item_1_1_pocket_watch",
   "wisdom_up": "item_1_4_bookmark_book",
   "will_up": "item_1_3_cracked_sword"
 };
@@ -802,6 +825,6 @@ export function getShopArt(shopItemId: string): ArtEntry | undefined {
   return id ? byId.get(id) : undefined;
 }
 export function getArt(id: string): ArtEntry | undefined { return byId.get(id); }
-export function artIsUnlocked(art: ArtEntry, endings: ReadonlySet<string>): boolean {
-  return !art.unlock || endings.has(art.unlock);
+export function artIsUnlocked(art: ArtEntry, endings: ReadonlySet<string>, discovered: ReadonlySet<string> = new Set()): boolean {
+  return discovered.has(art.id) || Boolean(art.unlock && endings.has(art.unlock));
 }

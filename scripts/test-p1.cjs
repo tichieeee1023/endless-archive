@@ -13,8 +13,8 @@ fs.writeFileSync(path.join(tmp, 'package.json'), '{"type":"commonjs"}');
 process.on('exit', () => fs.rmSync(tmp, { recursive: true, force: true }));
 for (const file of [
   'src/lib/ending.ts', 'src/lib/storyProgress.ts', 'src/lib/encounterChoice.ts',
-  'src/data/encounters.ts', 'src/data/memories.ts', 'src/data/endings.ts',
-  'src/store/useRun.ts', 'src/store/useSaveSlots.ts',
+  'src/data/encounters.ts', 'src/data/memories.ts', 'src/data/endings.ts', 'src/data/artLibrary.ts',
+  'src/store/useRun.ts', 'src/store/useSaveSlots.ts', 'src/store/useMeta.ts',
   'src/lib/mapgen.ts', 'src/lib/rng.ts', 'src/lib/check.ts',
   'src/lib/encounterPool.ts', 'src/data/independentEncounters.ts',
   'src/lib/bond.ts', 'src/lib/archiveView.ts', 'src/data/enemies.ts', 'src/data/prologue.ts',

@@ -120,7 +120,7 @@ const endingNames = {
 };
 
 console.log(`\n=== 실제 게임 로직 시뮬레이션 ${runs}회 ===`);
-console.log("전략: 만남 우선 · 필요한 경우 회복 · 자동 전투 · 감응 투자");
+console.log("전략: 만남 우선 · 필요한 경우 회복 · 자동 전투 · 감수성 투자");
 console.log(`클리어: ${victories}회 (${(victories / runs * 100).toFixed(1)}%)`);
 console.log("\n[사망한 막]");
 for (const act of [1, 2, 3]) {

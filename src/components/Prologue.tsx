@@ -2,6 +2,7 @@ import { PROLOGUE_CHOICES, PROLOGUE_PAGES } from "../data/prologue";
 import { STAT_LABEL } from "../types/game";
 import { useRun } from "../store/useRun";
 import trainCorridor from "../assets/illustrations/train-corridor.png";
+import { formatNarrative } from "../lib/formatNarrative";
 
 export default function Prologue() {
   const step = useRun((s) => s.prologueStep);
@@ -20,20 +21,20 @@ export default function Prologue() {
         <div className="prologue-visual"><img src={trainCorridor} alt="끝이 보이지 않는 열차 복도" /></div>
         <div className="prologue-content" key={step}>
           <p className="section-kicker">THE BEGINNING OF A STORY</p>
-          <h1>{choosing ? "당신은 무엇을 적을까" : page.title}</h1>
+          <h1>{choosing ? "어렴풋한 기억의 방향" : page.title}</h1>
           <div className="prologue-divider"><span>✦</span></div>
           {choosing ? (
             <>
-              <p className="prologue-text">수첩의 첫 줄이 당신의 대답을 기다린다.</p>
+              <p className="prologue-text">{formatNarrative("열차에 오른 이유를 전부 떠올릴 필요는 없다. 남아 있는 마음을 붙들어도, 당장 쓸 수 있는 것을 챙겨도 된다.")}</p>
               <div className="prologue-choices">
                 {PROLOGUE_CHOICES.map((choice, index) => (
                   <button key={choice.flag} className="story-button prologue-choice" onClick={() => choose(index)}>
-                    <span>{choice.text}<small>{STAT_LABEL[choice.stat]} +1</small></span><span aria-hidden="true">↗</span>
+                    <span>{choice.text}<small>{choice.stat ? `${STAT_LABEL[choice.stat]} +${choice.amount}` : `골드 +${choice.gold}G`}</small></span><span aria-hidden="true">↗</span>
                   </button>
                 ))}
               </div>
             </>
-          ) : <p className="prologue-text">{page.text}</p>}
+          ) : <p className="prologue-text">{formatNarrative(page.text)}</p>}
         </div>
         {!choosing && (
           <footer className="prologue-footer">

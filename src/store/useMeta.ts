@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { getEndingArt } from "../data/artLibrary";
 
 interface EndingRecord {
   title: string;
@@ -36,9 +37,12 @@ export const useMeta = create<MetaState>()(
       ),
       addEnding: (id, title, text) => set((s) => {
         const already = s.endings.includes(id);
+        const art = getEndingArt(id);
+        const artKey = art ? `art:${art.id}` : null;
         return {
           endings: already ? s.endings : [...s.endings, id],
           endingLog: { ...s.endingLog, [id]: { title, text, timestamp: Date.now() } },
+          collectedPages: artKey && !s.collectedPages.includes(artKey) ? [...s.collectedPages, artKey] : s.collectedPages,
         };
       }),
     }),

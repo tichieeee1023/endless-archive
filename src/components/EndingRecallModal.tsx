@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useMeta } from "../store/useMeta";
 import { ENDING_CATALOG } from "../data/endings";
 import { NPCS } from "../data/npcs";
+import { formatNarrative } from "../lib/formatNarrative";
 
 interface Props {
   endingId: string | null;
@@ -63,7 +64,7 @@ export default function EndingRecallModal({ endingId, onClose }: Props) {
           {npc && <p className="muted-copy">{npc.name} · {npc.title}</p>}
         </div>
         <ArtFrame art={getEndingArt(endingId)} variant="recall" eager />
-        <p className="story-prose">{record?.text ?? catalog.summary}</p>
+        <p className="story-prose">{formatNarrative(record?.text ?? catalog.summary)}</p>
         {recordedAt && !Number.isNaN(recordedAt.getTime()) && (
           <p className="recall-date">발견한 날짜 · {recordedAt.toLocaleString("ko-KR")}</p>
         )}

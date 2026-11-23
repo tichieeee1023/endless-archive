@@ -11,7 +11,7 @@ export type ShopItem = {
   id: string;
   name: string;
   price: number;
-  effect: "heal" | "mana" | "stat";
+  effect: "heal" | "mana" | "stat" | "weapon" | "luck";
   stat?: keyof Stats;
   amount: number;
 };

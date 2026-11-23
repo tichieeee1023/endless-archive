@@ -26,6 +26,6 @@ export const useAudio = create<AudioState>()(
         set({ bgmEnabled: next });
       },
     }),
-    { name: "endless-archive-audio" },
+    { name: "endless-archive-audio", onRehydrateStorage: () => (state) => { if (state) audio.setMuted(!state.sfxEnabled); } },
   ),
 );

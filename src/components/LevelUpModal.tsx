@@ -1,5 +1,7 @@
 import { useRun } from "../store/useRun";
 import { STAT_KEYS, STAT_LABEL, type StatKey } from "../types/game";
+import { levelArt } from "../data/extraArtMapping";
+import ExtraArt from "./ExtraArt";
 
 export default function LevelUpModal() {
   const { status, level, statPoints, stats, distributeStat, closeLevelUp } = useRun();
@@ -15,6 +17,7 @@ export default function LevelUpModal() {
             레벨 {level} · 남은 포인트 <b>{statPoints}</b>
           </p>
         </div>
+        <ExtraArt src={levelArt(level)} className="extra-art--level" />
         <div className="stat-grid">
           {STAT_KEYS.map((k: StatKey) => (
             <button

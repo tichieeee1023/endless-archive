@@ -12,6 +12,18 @@ new Function('module', 'exports', 'require', compiled.outputText)(loaded, loaded
 const { ALL_ART, EVENT_ART, ENDING_ART, SHOP_ART, artIsUnlocked, getEncounterArt, getEndingArt, getShopArt } = loaded.exports;
 const count = (type) => ALL_ART.filter(e => e.type === type).length;
 
+test('narrative paragraphs are indented without blank lines', () => {
+  const source = fs.readFileSync(path.join(root, 'src/lib/formatNarrative.ts'), 'utf8');
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  const module = { exports: {} };
+  new Function('module', 'exports', js)(module, module.exports);
+  const { formatNarrative } = module.exports;
+  assert.equal(formatNarrative('여백이 닫힌다. “너무 가까이 왔어.”'), '　여백이 닫힌다.\n　“너무 가까이 왔어.”');
+  assert.equal(formatNarrative('“괜찮아.” 그가 웃는다.'), '　“괜찮아.”\n　그가 웃는다.');
+  assert.equal(formatNarrative('문이 열린다.\n\n“어서 와요.”'), '　문이 열린다.\n　“어서 와요.”');
+  assert.equal(formatNarrative('첫 문단.\n\n둘째 문단.'), '　첫 문단.\n　둘째 문단.');
+});
+
 test('art catalogue contains the expected 64 optimized assets', () => {
   assert.equal(ALL_ART.length, 64);
   assert.deepEqual([count('events'), count('characters'), count('items')], [40, 12, 12]);
@@ -54,15 +66,24 @@ test('shop items map to actual icon image files', () => {
   for (const id of Object.keys(SHOP_ART)) assert.equal(getShopArt(id)?.type,'items');
 });
 
+test('ordinary art stays hidden until it is discovered', () => {
+  const scene = getEncounterArt('rael_tea');
+  const item = getShopArt('potion');
+  assert.equal(artIsUnlocked(scene, new Set()), false);
+  assert.equal(artIsUnlocked(item, new Set()), false);
+  assert.equal(artIsUnlocked(scene, new Set(), new Set([scene.id])), true);
+  assert.equal(artIsUnlocked(item, new Set(), new Set([item.id])), true);
+});
+
 test('P4 components include art features and respect ending unlocks', () => {
   const code = (file) => fs.readFileSync(path.join(root, 'src/components',file), 'utf8');
-  assert.match(code('EventModal.tsx'), /<ArtFrame art=\{getEncounterArt/);
+  assert.match(code('EventModal.tsx'), /<ArtFrame art=\{sceneArt\}/);
   assert.match(code('EndingScreen.tsx'), /<ArtFrame art=\{getEndingArt\(route\.id\)/);
   assert.match(code('EndingScreen.tsx'), /<ArtFrame art=\{getEndingArt\(bonus\.id\)/);
   assert.match(code('EndingRecallModal.tsx'), /<ArtFrame art=\{getEndingArt\(endingId\)/);
   assert.match(code('ArchiveModal.tsx'), /<ArtGallery endings=\{endings\}/);
   assert.match(code('ShopPanel.tsx'), /shop-item__icon/);
-  assert.match(code('ArtGallery.tsx'), /artIsUnlocked\(art, collected\)/);
+  assert.match(code('ArtGallery.tsx'), /artIsUnlocked\(art, collected, discovered\)/);
 });
 
 test('new and changed TSX/TS components parse', () => {

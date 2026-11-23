@@ -1,4 +1,4 @@
-import type { StatKey } from "./game";
+import type { StatKey, Stats } from "./game";
 import type { NpcId } from "./npc";
 
 export interface EncounterChoice {
@@ -24,10 +24,18 @@ export interface EncounterOutcome {
   clearFlags?: string[];
   /** 다음 인카운트로 강제 연결 */
   nextId?: string;
+  /** 이벤트 뒤 전투로 이어진다. */
+  battle?: { name: string };
+  /** 능력치, 행운, 무기 강화처럼 이번 여정 동안 유지되는 보정 */
+  statUp?: Partial<Stats>;
+  luck?: number;
+  weaponPower?: number;
 }
 
 export interface Encounter {
   id: string;
+  /** 지정된 책을 선택한 플레이에서만 등장한다. */
+  storyId?: string;
   npcId?: NpcId;
   /** 표시용 분류 */
   kind: "npc" | "event" | "chain";

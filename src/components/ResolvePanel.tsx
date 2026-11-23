@@ -1,4 +1,5 @@
 import { useRun } from "../store/useRun";
+import { formatNarrative } from "../lib/formatNarrative";
 
 export default function ResolvePanel() {
   const { nodeResult, advanceFloor } = useRun();
@@ -9,7 +10,7 @@ export default function ResolvePanel() {
     <div className="action-panel resolve-panel">
       <div className="panel-heading"><div><span className="eyebrow">A PAGE TURNS</span><h2>{isDeath ? "이야기의 끝에서" : "한 페이지를 넘기며"}</h2></div><span className="heading-ornament">✦</span></div>
       <div className="resolution-copy">
-        {nodeResult.logs.map((l, i) => <p key={i}>{l}</p>)}
+        {nodeResult.logs.map((l, i) => <p key={i}>{formatNarrative(l)}</p>)}
       </div>
       <button
         onClick={advanceFloor}

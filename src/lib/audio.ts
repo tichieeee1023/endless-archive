@@ -26,7 +26,6 @@ class AudioManager {
 
   setMuted(m: boolean) {
     this.muted = m;
-    if (this.master) this.master.gain.value = m ? 0 : 0.25;
   }
 
   private tone(freq: number, dur: number, type: OscillatorType, gain = 0.4, slideTo?: number) {

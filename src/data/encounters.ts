@@ -1,6 +1,7 @@
 import type { Encounter } from "../types/encounter";
 import { MEMORY_ENCOUNTERS } from "./memories";
 import { INDEPENDENT_ENCOUNTERS } from "./independentEncounters";
+import { UNNAMED_STATION_ENCOUNTERS } from "./unnamedStationEncounters";
 
 // 핵심 사건 3회 + 선택적 단서 1회 + 짧은 결말 1회.
 // 조사/선택의 결과는 story_*, 인연은 bond_* 및 romance_*로 분리한다.
@@ -289,4 +290,5 @@ export const ENCOUNTERS: Encounter[] = [
   },
   ...MEMORY_ENCOUNTERS,
   ...INDEPENDENT_ENCOUNTERS,
+  ...UNNAMED_STATION_ENCOUNTERS,
 ];
