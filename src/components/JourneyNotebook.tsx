@@ -1,3 +1,4 @@
+import { npcAccent } from "../lib/npcAccent";
 import { useEffect, useRef, useState } from "react";
 import { useRun } from "../store/useRun";
 import { useSaveSlots } from "../store/useSaveSlots";
@@ -9,7 +10,7 @@ const SECTIONS: {id:Section; label:string}[] = [
   {id:"main",label:"메인 단서"},{id:"people",label:"인물 사건"},{id:"passengers",label:"승객 이야기"},
 ];
 function Thread({group}: {group:NotebookGroup}) {
-  return <details className="notebook-thread">
+  return <details className="notebook-thread npc-edge" {...npcAccent(group.id)}>
     <summary><span><strong>{group.title}</strong><small>{group.status}{group.note ? ` · ${group.note}` : ""}</small></span><span className="notebook-thread__count">{group.entries.length}장면</span></summary>
     <div className="notebook-thread__entries">
       {!group.entries.length && <p className="notebook-empty">이전 기록에는 구체적인 사건 내용이 남아 있지 않습니다.</p>}

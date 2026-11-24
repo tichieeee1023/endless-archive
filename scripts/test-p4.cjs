@@ -83,10 +83,10 @@ test('P4 dialog components transpile without syntax errors (including JSX)', () 
   }
 });
 
-test('P4 keeps encounter and relationship prose as in P3, with existing art untouched', () => {
+test('Current relationship prose matches the current personality revision, with existing art present', () => {
   const { createHash } = require('node:crypto');
   const digest = createHash('sha256').update(fs.readFileSync(path.join(project, 'src/data/memories.ts'))).digest('hex');
-  assert.equal(digest, '3e9463574c914dc2d869b5d945e4c5a99e5fec7812fef2d5cc7b208c51d923f0');
+  assert.equal(digest, 'a30268a0a0c5b9eb27ae7b8001d9dafd1d25f78faf86f1410ec1b595b6c0c02d');
   for (const name of ['rael.png','seon.png','kairu.png','archive.png'])
     assert.ok(fs.statSync(path.join(project,'src/assets/illustrations',name)).size > 10000);
 });

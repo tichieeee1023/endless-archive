@@ -53,6 +53,6 @@ test('actual store generic choice cannot secretly select displayed continuation,
  const saved=JSON.parse(JSON.stringify(persistenceOptions['endless-archive-run'].partialize(s)));for(const r of [0,.12,.25,.5,.75,.9999]){useRun.setState(saved);const old=Math.random;Math.random=()=>r;try{run().selectNode(generic);assert.ok(!ids.includes(run().activeEncounter));}finally{Math.random=old;}}
  useRun.setState(saved);assert.equal(buildNotebook({...run(),logs:run().logs}).passengers.find(g=>g.id==='train_letter').status,'이번 페이지에서 재회 가능');run().selectNode(explicit);assert.equal(run().activeEncounter,'train_letter_echo');run().resolveEncounterChoice(0);run().continueEncounter();assert.ok(run().seenEncounters.includes('train_letter_echo'));
 });
-test('all 122 authored IDs remain intact, no changes to once-only rules or fixed scene weights',()=>{
- assert.equal(ENCOUNTERS.length,122);assert.equal(new Set(ENCOUNTERS.map(e=>e.id)).size,122);assert.ok(ENCOUNTERS.every(e=>e.once!==false));assert.ok(ENCOUNTERS.filter(e=>e.storyId==='unnamed_station').every(e=>e.weight===0));assert.equal(SIDE_STORIES.length,12);
+test('all 129 authored IDs remain intact, no changes to once-only rules or fixed scene weights',()=>{
+ assert.equal(ENCOUNTERS.length,129);assert.equal(new Set(ENCOUNTERS.map(e=>e.id)).size,129);assert.ok(ENCOUNTERS.every(e=>e.once!==false));assert.ok(ENCOUNTERS.filter(e=>e.storyId==='unnamed_station').every(e=>e.weight===0));assert.equal(SIDE_STORIES.length,12);
 });

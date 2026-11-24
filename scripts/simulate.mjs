@@ -57,7 +57,7 @@ for (let i = 0; i < runs; i++) {
         const eventOrder = [n => n.type === "event" && !n.encounterId, n => n.id.endsWith("reunion"), n => n.id.endsWith("side")];
         const target = process.env.TARGET_NPC;
         const targetReunion = target ? s.choices.find(n => n.encounterId && ENCOUNTERS.find(e=>e.id===n.encounterId)?.npcId===target) : undefined;
-        const preferred = targetReunion ?? (rotating ? [0,1,2].map(offset => eventOrder[(s.floor + s.act + i + offset) % 3]).map(predicate => s.choices.find(predicate)).find(Boolean) : undefined);
+        const preferred = (process.env.QUIET_VISIT === "1" ? s.choices.find(n => n.id.endsWith("personality")) : undefined) ?? targetReunion ?? (rotating ? [0,1,2].map(offset => eventOrder[(s.floor + s.act + i + offset) % 3]).map(predicate => s.choices.find(predicate)).find(Boolean) : undefined);
         const find = (t) => (t === "event" && preferred ? preferred : undefined) ?? (t === "event" && strat !== "grind" && process.env.REUNION !== "0" ? (process.env.SIDE_FIRST === "1" ? s.choices.find(n => n.id.endsWith("side")) : undefined) ?? s.choices.find(n => n.encounterId) : undefined) ?? s.choices.find((n) => n.type === t);
         const node = strat==="hybrid"
           ? ((s.hp < s.maxHp*0.5 && find("rest")) || (s.gold>=24 && (s.healthPotions<3||s.mp<s.maxMp-15) && find("shop")) || find("event") || (s.hp>=s.maxHp*0.65 && (find("battle")||find("elite"))) || find("rest") || find("treasure") || s.choices[0])
@@ -154,3 +154,6 @@ for (const r of res) {
   for (const ending of [resolution.journey, ...resolution.routes, ...resolution.bonuses]) endingCoverage[ending.id] = (endingCoverage[ending.id] ?? 0) + 1;
 }
 console.log("All ending awards:", JSON.stringify(endingCoverage));
+
+const personalityIds = ENCOUNTERS.filter(e=>e.id.includes('_personality_')||e.id==='personality_shared_table').map(e=>e.id);
+if (personalityIds.length) console.log('Personality scene visits:',JSON.stringify(Object.fromEntries(personalityIds.map(id=>[id,res.filter(r=>r.seen.includes(id)).length]))));

@@ -1,3 +1,4 @@
+import { npcAccent } from "../lib/npcAccent";
 import { getEndingArt } from "../data/artLibrary";
 import ArtFrame from "./ArtFrame";
 import { useEffect, useRef, useState } from "react";
@@ -62,13 +63,13 @@ export default function EndingRecallModal({ endingId, onClose }: Props) {
         }
       }}
     >
-      <div className="story-sheet recall-sheet">
+      <div className="story-sheet recall-sheet" {...npcAccent(npc?.id)}>
         <div className="recall-topline">
           <span className="eyebrow">A REMEMBERED ENDING</span>
           <button ref={closeRef} onClick={onClose} className="icon-button" aria-label="회상 닫기">✕</button>
         </div>
         <p className="recall-category" id="recall-category">{KIND_LABEL[catalog.kind]}{grade ? ` · ${grade}` : ""}</p>
-        <div>
+        <div className="npc-heading" {...npcAccent(npc?.id)}>
           <h2 id="recall-title" className="story-sheet__title">{record?.title ?? catalog.title}</h2>
           {npc && <p className="muted-copy">{npc.name} · {npc.title}</p>}
         </div>

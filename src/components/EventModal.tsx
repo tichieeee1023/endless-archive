@@ -1,3 +1,4 @@
+import { npcAccent } from "../lib/npcAccent";
 import { useEffect, useRef } from "react";
 import { useRun } from "../store/useRun";
 import { useMeta } from "../store/useMeta";
@@ -46,12 +47,12 @@ export default function EventModal() {
 
   return (
     <div className="story-page" aria-labelledby="encounter-title">
-      <div className="story-sheet encounter-sheet" ref={sheetRef}>
+      <div className="story-sheet encounter-sheet" {...npcAccent(npc?.id)} ref={sheetRef}>
         <div className="story-sheet__eyebrow">
-          <span>✦ &nbsp;{ev.companionKind === "romance" ? "연인이 된 뒤" : ev.companionKind === "boss" ? "마지막 장 앞에서" : ev.companionKind === "memory" ? "기억의 한 조각" : ev.companionKind === "special" ? "특별한 인연" : current?.id.endsWith("main") ? "이름 없는 역 · 메인 이야기" : ev.id.startsWith("side_") ? "승객의 이야기" : current?.encounterId ? "다시 만난 이야기" : npc ? "뜻밖의 만남" : ev.storyId ? "이 책에서만 만나는 사건" : "한 장의 이야기"}</span>
+          <span>✦ &nbsp;{ev.companionKind === "romance" ? "연인이 된 뒤" : ev.companionKind === "boss" ? "마지막 장 앞에서" : ev.companionKind === "memory" ? "기억의 한 조각" : ev.companionKind === "special" ? "특별한 인연" : current?.id.endsWith("main") ? "이름 없는 역 · 메인 이야기" : ev.id === "personality_shared_table" ? "함께한 사람들" : ev.id.startsWith("side_") ? "승객의 이야기" : current?.encounterId ? "다시 만난 이야기" : npc ? "뜻밖의 만남" : ev.storyId ? "이 책에서만 만나는 사건" : "한 장의 이야기"}</span>
           {npc && <span>{npc.title} · {npc.name}</span>}
         </div>
-        <div className="encounter-intro" key={ev.id}>
+        <div className="encounter-intro npc-heading" {...npcAccent(npc?.id)} key={ev.id}>
           <h2 ref={titleRef} tabIndex={-1} id="encounter-title" className="story-sheet__title">{ev.title}</h2>
           {npc && !sceneArt && !standing && <img className="encounter-portrait" src={portraits[npc.id]} alt={`${npc.name}의 펜화 초상`} width="120" height="132" />}
         </div>

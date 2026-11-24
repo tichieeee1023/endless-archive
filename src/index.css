@@ -806,3 +806,25 @@ p { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   .opening-roll__die--rolling, .opening-roll.is-revealed .opening-roll__result { animation: none; }
 }
+
+
+/* Character signatures — a quiet coloured book edge, never a full scene tint. */
+.npc-edge[data-npc] {
+  border-left: 3px solid var(--npc-accent);
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+.npc-edge[data-npc]:hover:not(:disabled) { border-left-color: var(--npc-accent); }
+.npc-heading[data-npc] {
+  border-left: 2px solid var(--npc-accent);
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+  padding-left: 12px;
+}
+.encounter-sheet[data-npc] .story-sheet__eyebrow > span:last-child,
+.recall-sheet[data-npc] .muted-copy,
+.destination[data-npc] .destination__tag,
+.archive-route-group[data-npc] .archive-route-header strong,
+.ending-card[data-npc] .ending-card__mark,
+.affinity-person[data-npc] .affinity-heart--known,
+.affinity-person[data-npc] .affinity-heart--close { color: var(--npc-accent); }

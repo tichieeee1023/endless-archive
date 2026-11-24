@@ -1,3 +1,4 @@
+import { npcAccent } from "../lib/npcAccent";
 import { useEffect, useRef, useState } from "react";
 import { useRun } from "../store/useRun";
 import { resolveRunEndings } from "../lib/ending";
@@ -40,7 +41,7 @@ export default function EndingScreen() {
       <div className="ending-ornament" aria-hidden="true">✧</div>
       <div className="eyebrow">THE END OF A JOURNEY</div>
       <p className="ending-kind">여정의 결말</p>
-      <h1>{ending.title}</h1>
+      <h1 className="npc-heading" {...npcAccent(ending.npcId)}>{ending.title}</h1>
       <div className="ending-rule" aria-hidden="true">✦</div>
       <ArtFrame art={getEndingArt(ending.id)} variant="ending" eager />
       <p className="ending-main-copy">{formatNarrative(ending.text)}</p>
@@ -49,7 +50,7 @@ export default function EndingScreen() {
           <h2>인물들의 사건 결말</h2>
           <p className="ending-summary__intro">사건에서 선택한 결과입니다. 연애 여부와는 관계없이 기록돼요.</p>
           {resolution.routes.map((route) => (
-            <article className="ending-summary__item" key={route.id}>
+            <article className="ending-summary__item npc-heading" {...npcAccent(route.npcId)} key={route.id}>
               <div className="ending-summary__heading"><span className={`ending-card__grade ending-card__grade--${route.grade}`}>{route.grade.toUpperCase()}</span><strong>{NPCS[route.npcId].name} · {route.title}</strong></div>
               <ArtFrame art={getEndingArt(route.id)} variant="ending" />
               <p>{formatNarrative(route.text)}</p>
@@ -64,7 +65,7 @@ export default function EndingScreen() {
           <h2>특별한 인연 · 추가 후일담</h2>
           <p className="ending-summary__intro">사건 결말에 더해진 작은 약속입니다.</p>
           {resolution.bonuses.map((bonus) => (
-            <article className="ending-summary__item" key={bonus.id}>
+            <article className="ending-summary__item npc-heading" {...npcAccent(bonus.npcId)} key={bonus.id}>
               <div className="ending-summary__heading"><span className="ending-card__grade ending-card__grade--bonus">추가</span><strong>{bonus.title}</strong></div>
               <ArtFrame art={getEndingArt(bonus.id)} variant="ending" />
               <p>{formatNarrative(bonus.text)}</p>

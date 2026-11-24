@@ -1,3 +1,4 @@
+import { npcAccent } from "../lib/npcAccent";
 import { useRun } from "../store/useRun";
 import { NPCS } from "../data/npcs";
 
@@ -11,7 +12,7 @@ export default function AffinityBar() {
         const relationship = flags.includes(`route_${npc.id}_bad`) ? "엇갈린 인연" : flags.includes(`romance_${npc.id}_promise`) ? "연인" : stage === "close" ? "가까워진 사이"
           : stage === "known" ? "알아가는 중" : "낯선 사이";
         return (
-          <div key={npc.id} className="affinity-person" title={`${npc.name} · 호감도 ${affinity[npc.id]}`}>
+          <div key={npc.id} className="affinity-person" {...npcAccent(npc.id)} title={`${npc.name} · 호감도 ${affinity[npc.id]}`}>
             <span className={`affinity-heart affinity-heart--${stage}`} aria-hidden="true">{stage === "stranger" ? "♡" : "♥"}</span>
             <span>{npc.name}</span>
             <span className="affinity-value">{relationship}</span>

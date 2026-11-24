@@ -46,9 +46,9 @@ const ROUTE_ENDINGS: Record<NpcId, Record<RouteGrade, Omit<RouteEnding, "npcId" 
 };
 
 const BONUS_ENDINGS: Record<NpcId, EndingResult> = {
-  rael: { id: "rael_romance", npcId: "rael", title: "옆자리의 약속", text: "라엘이 회중시계를 닫고 손을 내민다. “이번에는 근무가 아닙니다. 당신과 함께 가고 싶습니다.”" },
-  seon: { id: "seon_romance", npcId: "seon", title: "귀향의 동행", text: "세온은 검을 집어넣고 웃는다. “이번엔 네 이야기도 들려줘. 오래 걸려도 괜찮아.”" },
-  kairu: { id: "kairu_romance", npcId: "kairu", title: "둘이 쓰는 여백", text: "카이루가 빈 페이지를 펼친다. “네가 허락한다면, 다음 이야기는 나와 함께 써 줄래?”" },
+  rael: { id: "rael_romance", npcId: "rael", title: "옆자리의 약속", text: "라엘이 회중시계를 닫고 손을 내민다. “근무도 아니고 의무도 아닙니다. 제 개인적인 요청입니다. 당신과 함께 가고 싶습니다.”" },
+  seon: { id: "seon_romance", npcId: "seon", title: "귀향의 동행", text: "세온은 검을 집어넣고 웃는다. “아르겐 얘기는 내가 실컷 했지. 이제 네 차례야.” 그는 당신 쪽으로 자리를 조금 당긴다. “시간은 많아. 천천히 들려줘. 네가 보고 자란 곳도 언젠가 같이 가 보고 싶거든.”" },
+  kairu: { id: "kairu_romance", npcId: "kairu", title: "둘이 쓰는 여백", text: "카이루가 빈 페이지를 펼친다. “표지에는 우리 이름을 나란히 적을까? 물론 결말은 공란이야. 둘 다 아직 모르잖아.”" },
 };
 
 const DEATH: EndingResult = {

@@ -1,7 +1,9 @@
+import { npcAccent } from "../lib/npcAccent";
 import { useRun } from "../store/useRun";
 import type { NodeType } from "../types/game";
 import { nodeArt } from "../data/extraArtMapping";
 import ExtraArt from "./ExtraArt";
+import { ENCOUNTERS } from "../data/encounters";
 
 const TYPE_STYLE: Record<NodeType, string> = {
   battle: "위험", elite: "강한 적", event: "만남과 이야기", shop: "서적상",
@@ -18,15 +20,17 @@ export default function NodeChoicePanel() {
       {choices.map((n) => {
         const t = TYPE_STYLE[n.type];
         const main = n.id.endsWith("main");
+        const npcId = n.encounterId ? ENCOUNTERS.find(e => e.id === n.encounterId)?.npcId : undefined;
         return (
           <button
             key={n.id}
             data-sfx={n.type === "event" ? "custom" : "page"}
             onClick={() => selectNode(n)}
-            className={`destination${n.encounterId && !main ? " destination--reunion" : ""}`}
+            {...npcAccent(npcId)}
+            className={`destination npc-edge${n.encounterId && !main ? " destination--reunion" : ""}`}
           >
             <span className="destination__icon" aria-hidden="true">✧<ExtraArt src={nodeArt(n.type)} className="extra-art--node" /></span>
-            <span className="destination__body"><span className="destination__tag">{main ? "메인 이야기 · 필수" : n.id.endsWith("side") ? "승객의 이야기 · 선택" : n.encounterId ? "이어지는 인연 · 선택" : t}</span><strong>{n.title}</strong><small>{n.preview}</small></span>
+            <span className="destination__body"><span className="destination__tag">{main ? "메인 이야기 · 필수" : n.id.endsWith("side") ? "승객의 이야기 · 선택" : n.id.endsWith("personality") ? "일상의 한 장면 · 선택" : n.encounterId ? "이어지는 인연 · 선택" : t}</span><strong>{n.title}</strong><small>{n.preview}</small></span>
             <span className="destination__arrow">↗</span>
           </button>
         );

@@ -11,7 +11,7 @@ const toPage=(act,floor)=>{useRun.setState({act,floor:floor-1,status:'resolving'
 const choicesFor=(act,flags=[],seen=[])=>eligibleEncounters(SIDE_STORY_ENCOUNTERS,act,flags,seen);
 test('20 distinct passenger events, 4 three-part stories and 8 shorts, no NPC or romance conditions, mapped art',()=>{
  assert.equal(SIDE_STORY_ENCOUNTERS.length,20);assert.equal(SIDE_STORIES.filter(s=>s.stages.length===3).length,4);assert.equal(SIDE_STORIES.filter(s=>s.stages.length===1).length,8);
- assert.equal(new Set(ENCOUNTERS.map(e=>e.id)).size,ENCOUNTERS.length);assert.equal(ENCOUNTERS.length,122);
+ assert.equal(new Set(ENCOUNTERS.map(e=>e.id)).size,ENCOUNTERS.length);assert.equal(ENCOUNTERS.length,129);
  for(const e of SIDE_STORY_ENCOUNTERS){assert.ok(!e.npcId&&!e.storyId&&!e.minAffinity);assert.ok(getEncounterArt(e.id));assert.equal(e.choices.length,2);for(const c of e.choices){assert.ok(c.result.text);assert.equal(c.result.setFlags.length,1);assert.ok(c.result.setFlags[0].startsWith('side_'));assert.equal(sideStoryEchoes(new Set(c.result.setFlags)).length,1);}}
 });
 for(const story of SIDE_STORIES.filter(s=>s.stages.length===3))test(`${story.id}: first meeting random, later stages gated by choices and act, optional offer, one line only`,()=>{

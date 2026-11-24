@@ -81,6 +81,8 @@ export function buildNotebook(source: NotebookSource): NotebookView {
     const state = records.some(r => r.current) ? "읽는 중" : ids.some(id => offered.has(id)) ? "이번 페이지에서 재회 가능" : resolved ? "핵심 사건 마무리" : status === "finalChoice" || status === "ended" ? "미완의 이야기" : "이야기 진행 중";
     return [{id:npc.id,title:npc.name,status:state,note:`${relationship} · 호감도 ${affinity[npc.id]}`,entries:records}];
   });
+  const shared = byId.get("personality_shared_table");
+  if (shared && visitedSet.has(shared.id)) people.push({id:"shared-companions",title:"함께한 사람들",status:shared.id === active && !seenEncounters.includes(shared.id) ? "읽는 중" : "이번 이야기를 마침",entries:[entry(shared)]});
   const passengers: NotebookGroup[] = [];
   const grouped = new Set<string>();
   const addGroup = (id: string, title: string, ids: string[]) => {
@@ -92,7 +94,7 @@ export function buildNotebook(source: NotebookSource): NotebookView {
   for (const ids of COMMON_CHAINS) addGroup(ids[0],byId.get(ids[0])!.title,ids);
   for (const id of visited) {
     const e = byId.get(id);
-    if (!e || e.npcId || e.storyId || grouped.has(id)) continue;
+    if (!e || e.npcId || e.storyId || grouped.has(id) || id === "personality_shared_table") continue;
     addGroup(id,e.title,[id]);
   }
   // Sort by last actual encounter, with current threads first; do not sort or mutate source arrays.

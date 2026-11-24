@@ -1,3 +1,4 @@
+import { npcAccent } from "../lib/npcAccent";
 import ArtGallery from "./ArtGallery";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMeta } from "../store/useMeta";
@@ -68,7 +69,8 @@ export default function ArchiveModal({ open, onClose }: Props) {
         onClick={() => isUnlocked && setRecallId(entry.id)}
         disabled={!isUnlocked}
         aria-label={`${grade ? `${grade} · ` : ""}${isUnlocked ? entry.title : "미발견 결말"}${npc ? `, ${npc.name}` : ""}${isUnlocked ? ", 다시 읽기" : `, 힌트: ${entry.hint}`}`}
-        className={`ending-card ${isUnlocked ? "is-unlocked" : "is-locked"} ${entry.id === "true_end" && isUnlocked ? "is-true" : ""}`}
+        {...npcAccent(entry.npcId)}
+        className={`ending-card npc-edge ${isUnlocked ? "is-unlocked" : "is-locked"} ${entry.id === "true_end" && isUnlocked ? "is-true" : ""}`}
       >
         <div className="ending-card__heading">
           <span className="ending-card__mark" aria-hidden="true">{isUnlocked ? "◆" : "◇"}</span>
@@ -193,7 +195,7 @@ export default function ArchiveModal({ open, onClose }: Props) {
                 const entries = routeCatalogFor(id);
                 const found = entries.filter((entry) => unlocked.has(entry.id)).length;
                 return (
-                  <section className="archive-route-group" key={id} aria-label={`${NPCS[id].name}의 사건 결말`}>
+                  <section className="archive-route-group" {...npcAccent(id)} key={id} aria-label={`${NPCS[id].name}의 사건 결말`}>
                     <div className="archive-route-header">
                       <div><strong>{NPCS[id].name}</strong><span>{NPCS[id].title}</span></div>
                       <span className="archive-route-counter">{found} / {entries.length}</span>

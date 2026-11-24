@@ -8,7 +8,7 @@ import type { BattleState } from "../types/battle";
 import type { CharmEffect, CharmItem, NodeResult, ShopCharmOffer, ShopItem, WeaponItem } from "../types/node";
 import type { NpcId } from "../types/npc";
 import { generateChoices } from "../lib/mapgen";
-import { companionFor, reunionOffer } from "../lib/companions";
+import { companionFor, reunionOffer, personalityOffer } from "../lib/companions";
 import { eligibleEncounters, pickWeightedEncounter } from "../lib/encounterPool";
 import { spawnEnemy } from "../data/enemies";
 import { ENCOUNTERS } from "../data/encounters";
@@ -478,6 +478,8 @@ export const useRun = create<RunState>()(
         if (offer && !fixed) nextChoices.push(offer.node);
         const sideOffer = !fixed && nextFloor < chapterLength(now.flags) ? sideStoryOffer(nextAct, nextFloor, now.flags, now.seenEncounters) : undefined;
         if (sideOffer) nextChoices.push(sideOffer.node);
+        const quietVisit = !fixed ? personalityOffer(nextAct, nextFloor, now.flags, now.seenEncounters, now.affinity) : undefined;
+        if (quietVisit) nextChoices.push(quietVisit);
         set({
           ...(offer || sideOffer ? { flags: [...new Set([...now.flags, ...(offer ? [offer.flag] : []), ...(sideOffer ? [sideOffer.flag] : [])])] } : {}),
           act: nextAct, floor: nextFloor,

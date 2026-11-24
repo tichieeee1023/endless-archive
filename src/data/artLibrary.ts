@@ -407,7 +407,7 @@ export const ALL_ART: ArtEntry[] = [
   {
     "id": "reuse_04_1_ruined_sword",
     "src": "/art/events/reuse_04_1_ruined_sword.webp",
-    "title": "금이 간 검과 유적",
+    "title": "금이 간 검과 기사",
     "type": "events",
     "tags": [
       "재사용 삽화",
@@ -429,7 +429,7 @@ export const ALL_ART: ArtEntry[] = [
   {
     "id": "reuse_04_3_fallen_banner",
     "src": "/art/events/reuse_04_3_fallen_banner.webp",
-    "title": "무너진 기사의 깃발",
+    "title": "검을 든 기사",
     "type": "events",
     "tags": [
       "재사용 삽화",

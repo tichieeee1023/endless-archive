@@ -176,3 +176,28 @@ test('dawn station appears in three suitable endings; old ending art remains ava
   assert.match(gallery, /journey_stay: "planned_02_2_conductors_logbook"/);
   assert.match(gallery, /ids.add\(art.id\)/);
 });
+
+// The legacy Seon sheet was actually Rael's. Check image bytes, not just IDs.
+test('legacy knight art and its reuse copies contain the verified Seon or ruins illustrations', () => {
+  const verified = {
+    planned_03_1_cracked_sword: 'characters/cg_seon_1_cracked_sword',
+    planned_03_2_ruins_signal: 'characters/cg_seon_2_ruins_signal',
+    planned_03_3_last_knight: 'characters/cg_seon_before_boss',
+    planned_03_4_argen_outskirts: 'events/reuse_02_4_ruined_window',
+    reuse_04_1_ruined_sword: 'characters/cg_seon_1_cracked_sword',
+    reuse_04_2_argen_ruins: 'events/reuse_02_4_ruined_window',
+    reuse_04_3_fallen_banner: 'characters/cg_seon_before_boss',
+    reuse_04_4_archway: 'events/reuse_03_4_ruined_library',
+  };
+  for (const [id, src] of Object.entries(verified)) {
+    const art = ALL_ART.find(x => x.id === id);
+    assert.ok(art, id);
+    assert.deepEqual(fs.readFileSync(path.join(root, 'public', art.src)), fs.readFileSync(path.join(root, 'public/art', `${src}.webp`)), id);
+  }
+  for (const [id, expected] of Object.entries({seon_2:'planned_03_4_argen_outskirts',seon_3:'planned_03_3_last_knight',seon_final_choice:'planned_03_3_last_knight'})) {
+    assert.equal(getEncounterArt(id)?.id, expected);
+    assert.equal(getEncounterArt(id, ['route_rael_happy','romance_rael_promise'], true)?.id, expected);
+  }
+  assert.equal(getEndingArt('seon_route_bad')?.id, 'planned_03_3_last_knight');
+  assert.equal(getEndingArt('seon_route_normal')?.id, 'planned_03_4_argen_outskirts');
+});
