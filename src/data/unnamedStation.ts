@@ -1,3 +1,5 @@
+import { EXPANDED_STORY } from "./mainStory";
+
 export interface StoryBeatChoice {
   text: string;
   flag: string;
@@ -31,6 +33,28 @@ export const UNNAMED_STATION_OPENING: StoryBeat = {
 };
 
 export function unnamedStationInterludeFor(nextAct: number, flags: readonly string[]): StoryBeat {
+  if (flags.includes(EXPANDED_STORY)) {
+    if (nextAct === 2) return {
+      act: 2, title: "기록에서 사라진 승객",
+      text: `첫 번째 책이 닫히고 열차의 흔들림이 돌아온다. ${flags.includes("main_manifest_proof") ? "수첩에는 두 사람의 승차 기록이 나란히 남아 있다." : "두 사람이 함께 탔다는 사실을 이제 알고 있다."} ${flags.includes("main_signal_proof") ? "창밖의 불빛이 당신의 대답을 기억한다." : "창밖의 불빛은 아직 사라지지 않았다."}\n\n차장은 다음 책을 내민다. “역이 지워진 날의 기록입니다. 이 책에는 떠나셨던 이유가 남아 있을 겁니다.”\n\n누가 두 사람을 갈라놓았는지, 그날 어떤 약속을 했는지 알아낼 차례다.`,
+      prompt: "다음 책을 펼치기 전 무엇을 간직할까?",
+      choices: [
+        {text:"두 사람의 승차 기록을 정리한다",flag:"station_act1_copy_record",log:"수첩의 기록을 정리했다."},
+        {text:"차장에게 다음 책의 기록을 묻는다",flag:"station_act1_ask_conductor",log:"차장은 비가 내리던 밤의 기록이 남아 있다고 답했다."},
+        {text:"창밖을 향해 차표를 들어 보인다",flag:"station_act1_show_ticket",log:"창밖의 불빛이 짧게 응답했다."},
+      ],
+    };
+    return {
+      act: 3,title:"돌아오지 못한 약속",
+      text:`두 번째 책을 덮자 끊어진 선로가 차창 너머에 나타난다. 당신은 그날 길을 열기 위해 떠났고, 다른 사람은 신호를 보내기 위해 남았다. ${flags.includes("main_reason_proof") ? "두 사람의 선택을 수첩에 나란히 기록했다." : "그날의 기억을 전부 붙잡지는 못했지만, 다시 답할 기회는 남아 있다."}\n\n새벽역이 가까워지고 있다. 마지막 장은 도착하지 못한 이야기를 닫으려 한다. 이번에는 그 문장을 넘어 두 사람이 직접 다음 목적지를 결정해야 한다.`,
+      prompt:"마지막 책을 어떤 마음으로 펼칠까?",
+      choices:[
+        {text:"새벽역의 이름을 소리 내어 읽는다",flag:"station_act2_speak_name",log:"돌아갈 역의 이름을 기억했다."},
+        {text:"두 사람의 차표를 기억한다",flag:"station_act2_hold_ticket",log:"두 사람의 여정은 아직 끝나지 않았다."},
+        {text:"떠났던 이유를 잊지 않기로 한다",flag:"station_act2_recall_reason",log:"그날의 선택을 잊지 않기로 했다."},
+      ],
+    };
+  }
   if (nextAct === 2) {
     const clue = flags.includes("station_opening_record")
       ? "차장의 기록에서 본 검은 줄은 한 사람의 이름을 가리고 있었다. 지워진 역에서 내리지 못한 마지막 승객."

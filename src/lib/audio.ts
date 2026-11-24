@@ -1,4 +1,4 @@
-type SfxName = "attack" | "hit" | "heal" | "levelup" | "event" | "ending" | "click" | "dice";
+type SfxName = "attack" | "hit" | "heal" | "levelup" | "event" | "ending" | "click" | "dice" | "page";
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -6,6 +6,7 @@ class AudioManager {
   private bgmGain: GainNode | null = null;
   private bgmNodes: AudioNode[] = [];
   muted = false;
+  private noiseSeed = 0x42b92c1d;
 
   private ensure(): AudioContext {
     if (!this.ctx) {
@@ -46,7 +47,11 @@ class AudioManager {
     const ctx = this.ensure();
     const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    // Audio texture is independent of the random stream used by encounters and combat.
+    for (let i = 0; i < data.length; i++) {
+      this.noiseSeed = (Math.imul(this.noiseSeed, 1664525) + 1013904223) >>> 0;
+      data[i] = (this.noiseSeed / 0x100000000 * 2 - 1) * (1 - i / data.length);
+    }
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const g = ctx.createGain();
@@ -72,6 +77,7 @@ class AudioManager {
         setTimeout(() => this.tone(523, 0.8, "triangle", 0.25), 300);
         break;
       case "click": this.tone(660, 0.03, "sine", 0.06); break;
+      case "page": this.noise(0.10, 0.055); break;
       case "dice":
         this.tone(740, 0.12, "sine", 0.18);
         setTimeout(() => this.tone(988, 0.2, "sine", 0.16), 90);

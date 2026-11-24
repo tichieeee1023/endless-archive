@@ -1,10 +1,11 @@
 import { getEndingArt } from "../data/artLibrary";
 import ArtFrame from "./ArtFrame";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMeta } from "../store/useMeta";
 import { ENDING_CATALOG } from "../data/endings";
 import { NPCS } from "../data/npcs";
 import { formatNarrative } from "../lib/formatNarrative";
+import { journeyEndings } from "../lib/journeyHistory";
 
 interface Props {
   endingId: string | null;
@@ -19,7 +20,15 @@ const KIND_LABEL = {
 };
 
 export default function EndingRecallModal({ endingId, onClose }: Props) {
-  const record = useMeta((s) => (endingId ? s.endingLog[endingId] : undefined));
+  const latest = useMeta((s) => (endingId ? s.endingLog[endingId] : undefined));
+  const legacy = useMeta((s) => (endingId ? s.legacyEndingLog[endingId] : undefined));
+  const history = useMeta((s) => s.journeyHistory);
+  const [selected, setSelected] = useState("latest");
+  const versions = history.flatMap((journey) => {
+    const result = journeyEndings(journey).find((ending) => ending.id === endingId);
+    return result ? [{ id: journey.id, number: journey.number, timestamp: journey.timestamp, title: result.title, text: result.text }] : [];
+  });
+  const record = selected === "legacy" ? legacy ?? latest : versions.find((version) => version.id === selected) ?? latest;
   const closeRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
 
@@ -43,8 +52,8 @@ export default function EndingRecallModal({ endingId, onClose }: Props) {
       onKeyDown={(event) => {
         if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); }
         if (event.key === "Tab") {
-          // Both actions are closing controls; keep keyboard focus inside the upper dialog.
-          const focusables = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+          // Keep keyboard focus inside the upper dialog.
+          const focusables = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled)"));
           const first = focusables[0];
           const last = focusables.at(-1);
           if (!first || !last) return;
@@ -60,9 +69,16 @@ export default function EndingRecallModal({ endingId, onClose }: Props) {
         </div>
         <p className="recall-category" id="recall-category">{KIND_LABEL[catalog.kind]}{grade ? ` · ${grade}` : ""}</p>
         <div>
-          <h2 id="recall-title" className="story-sheet__title">{catalog.title}</h2>
+          <h2 id="recall-title" className="story-sheet__title">{record?.title ?? catalog.title}</h2>
           {npc && <p className="muted-copy">{npc.name} · {npc.title}</p>}
         </div>
+        {(versions.length > 0 || legacy) && <label className="journey-version-picker">읽을 기록
+          <select value={selected} onChange={(event) => setSelected(event.target.value)}>
+            <option value="latest">가장 최근에 발견한 결말</option>
+            {versions.map((version) => <option key={version.id} value={version.id}>{version.number}번째 여정 · {new Date(version.timestamp).toLocaleDateString("ko-KR")}</option>)}
+            {legacy && <option value="legacy">이전 버전에서 보관된 결말</option>}
+          </select>
+        </label>}
         <ArtFrame art={getEndingArt(endingId)} variant="recall" eager />
         <p className="story-prose">{formatNarrative(record?.text ?? catalog.summary)}</p>
         {recordedAt && !Number.isNaN(recordedAt.getTime()) && (

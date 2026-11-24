@@ -9,9 +9,9 @@ const POOL = [
 ];
 
 const BOSSES: Record<number, { name: string; hp: number; atk: number; exp: number; gold: number }> = {
-  1: { name: "이야기의 끝 — 첫 장", hp: 90, atk: 13, exp: 70, gold: 100 },
-  2: { name: "이야기의 끝 — 중간 장", hp: 140, atk: 17, exp: 140, gold: 200 },
-  3: { name: "이야기의 끝 — 마지막 장", hp: 200, atk: 21, exp: 280, gold: 500 },
+  1: { name: "이야기의 끝 — 첫 장", hp: 100, atk: 14, exp: 70, gold: 100 },
+  2: { name: "이야기의 끝 — 중간 장", hp: 155, atk: 18, exp: 140, gold: 200 },
+  3: { name: "이야기의 끝 — 마지막 장", hp: 345, atk: 25, exp: 280, gold: 500 },
 };
 
 export function spawnEnemy(

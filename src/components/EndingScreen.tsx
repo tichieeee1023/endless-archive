@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useRun } from "../store/useRun";
-import { useMeta } from "../store/useMeta";
 import { resolveRunEndings } from "../lib/ending";
 import { NPCS } from "../data/npcs";
 import { audio } from "../lib/audio";
@@ -11,7 +10,7 @@ import { formatNarrative } from "../lib/formatNarrative";
 
 export default function EndingScreen() {
   const startRun = useRun((s) => s.startRun);
-  const { addRun, addEnding } = useMeta();
+  const [saveError, setSaveError] = useState(false);
   const [resolution] = useState(() => {
     const run = useRun.getState();
     return resolveRunEndings(run.flags, run.nodeResult?.endsRun === "victory");
@@ -21,17 +20,19 @@ export default function EndingScreen() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const recorded = useRef(false);
 
+  const saveJourney = () => {
+    try {
+      useRun.getState().recordCompletedJourney();
+      setSaveError(false);
+    } catch {
+      setSaveError(true);
+    }
+  };
   useEffect(() => {
     if (recorded.current || useRun.getState().endingRecorded) return;
     recorded.current = true;
     audio.sfx("ending");
-    for (const result of [...resolution.routes, ...resolution.bonuses, ending]) {
-      addEnding(result.id, result.title, result.text);
-    }
-    addRun(useRun.getState().nodeResult?.endsRun === "victory" ? "victory" : "death");
-    useRun.getState().markEndingRecorded(ending);
-    // Resolve only once from the persisted end-of-run snapshot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    saveJourney();
   }, []);
 
   return (
@@ -72,7 +73,9 @@ export default function EndingScreen() {
         </section>
       )}
       <div className="ending-actions">
-        <button onClick={() => startRun()} className="story-button story-button--primary justify-center">다시 열차에 오른다</button>
+        {saveError && <div role="alert" className="ending-empty-route">여정 기록을 저장하지 못했습니다. 브라우저 저장 공간을 확인한 뒤 다시 시도해 주세요.
+          <button onClick={saveJourney} className="story-button justify-center">기록 다시 저장</button></div>}
+        <button onClick={() => startRun()} disabled={saveError} className="story-button story-button--primary justify-center">다시 열차에 오른다</button>
         <button className="ending-archive" onClick={() => setArchiveOpen(true)}>서고에서 결말 다시 읽기 →</button>
       </div>
       <ArchiveModal open={archiveOpen} onClose={() => setArchiveOpen(false)} />

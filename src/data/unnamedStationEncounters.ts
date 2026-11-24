@@ -112,7 +112,7 @@ export const UNNAMED_STATION_ENCOUNTERS: Encounter[] = [
   {
     id: "station_window_reply", storyId: "unnamed_station", kind: "chain", title: "반쪽 차표의 기억",
     minAct: 2, weight: 0,
-    text: "창문에 닿은 차표가 안쪽의 오래된 장면과 포개진다. 상대는 당신을 붙잡지 않았다. 먼저 새벽역으로 가서 길을 밝혀 달라고 부탁했었다.",
+    text: "창문에 닿은 차표가 안쪽의 오래된 장면과 포개진다. 상대는 당신을 붙잡지 않았다. 당신은 상대에게 먼저 신호소로 가서 돌아올 길을 밝혀 달라고 부탁했었다.",
     choices: [
       { text: "통찰로 차표 뒷면의 약속을 읽는다", check: { stat: "insight", base: 35, difficulty: 45 }, result: {
         text: "‘새벽역에서 기다릴게.’ 지워졌던 문장이 돌아온다. 당신은 약속을 지키러 떠난 것이었다.",

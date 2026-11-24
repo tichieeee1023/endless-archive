@@ -12,11 +12,14 @@ export interface EndingEntry {
 
 export const ENDING_CATALOG: EndingEntry[] = [
   { id: "death", kind: "journey", title: "찢어진 페이지", npcId: null, hint: "…어딘가에서, 이야기가 끝났다.", summary: "당신의 여정은 여기서 끝났다. 열차는 다시 기다린다." },
-  { id: "solo", kind: "journey", title: "서고의 주인", npcId: null, hint: "여정의 마지막 페이지에 도달한다.", summary: "다음 목적지는 스스로 정할 수 있다." },
+  { id: "solo", kind: "journey", title: "서고의 주인", npcId: null, hint: "마지막 장에서 열차의 서고로 돌아가기로 한다.", summary: "끝나지 않은 책들을 돌보며 다음 이야기를 준비한다." },
   { id: "true_end", kind: "journey", title: "쓰이지 않은 첫 문장", npcId: null, hint: "이름 없는 역에서 승객과의 약속, 역의 이름, 떠났던 이유를 연결해 돌아간다.", summary: "사라진 역과 두 사람의 약속이 온전한 결말을 맞는다." },
   { id: "journey_return", kind: "journey", title: "다시 돌아갈 역", npcId: null, hint: "마지막 장에서 돌아갈 길을 고른다.", summary: "미뤄 둔 말을 건네기 위해 열차에서 내린다." },
-  { id: "journey_stay", kind: "journey", title: "이야기를 잇는 사람", npcId: null, hint: "마지막 장에서 열차에 남기로 한다.", summary: "다음 승객이 길을 고를 때까지 곁을 지킨다." },
+  { id: "journey_stay", kind: "journey", title: "이야기를 잇는 사람", npcId: null, hint: "마지막 장에서 새벽역에 남아 불을 켜 둔다.", summary: "다음 승객이 길을 고를 때까지 곁을 지킨다." },
   { id: "journey_depart", kind: "journey", title: "아직 없는 목적지", npcId: null, hint: "마지막 장에서 차표의 빈칸에 새 목적지를 쓴다.", summary: "지도에 없는 길을 향해 스스로 첫발을 내딛는다." },
+  { id: "rael_defeat", kind: "journey", title: "비상 정차", npcId: "rael", hint: "라엘과 가까워진 채 마지막 장에서 쓰러진다.", summary: "차장이 열차를 세워 당신을 구한다." },
+  { id: "seon_defeat", kind: "journey", title: "부러진 검 곁에서", npcId: "seon", hint: "세온과 가까워진 채 마지막 장에서 쓰러진다.", summary: "기사가 마지막 순간에 길을 막아선다." },
+  { id: "kairu_defeat", kind: "journey", title: "여백에 적힌 이름", npcId: "kairu", hint: "카이루와 가까워진 채 마지막 장에서 쓰러진다.", summary: "그가 당신의 이름을 여백에 적는다." },
   { id: "rael_route_bad", kind: "route", npcId: "rael", title: "반복되는 시간", hint: "기관실 문을 등진 대가.", summary: "라엘은 다시 운행에 묶인다." },
   { id: "rael_route_normal", kind: "route", npcId: "rael", title: "잠깐의 정차", hint: "명령을 따르는 것 말고도 길이 있다.", summary: "완전한 해방은 아니지만 라엘은 선택을 배웠다." },
   { id: "rael_route_happy", kind: "route", npcId: "rael", title: "멈출 수 있는 사람", hint: "운행 규정의 예외 조항과 장부의 진실을 함께 확인한다.", summary: "라엘은 스스로 목적지를 정한다." },

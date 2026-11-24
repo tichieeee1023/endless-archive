@@ -14,7 +14,19 @@
     "test:p3": "node scripts/test-p3.cjs",
     "sim:p3": "node scripts/simulate-p3.cjs",
     "test:p4": "node scripts/test-p4.cjs",
-    "test:art": "node scripts/test-art-integration.cjs"
+    "test:art": "node scripts/test-art-integration.cjs",
+    "test:balance": "node scripts/test-balance.cjs",
+    "test:companions": "node scripts/test-companions.cjs",
+    "test:main": "node scripts/test-main-story.cjs",
+    "test:side": "node scripts/test-side-stories.cjs",
+    "test:quality": "node scripts/test-quality.cjs",
+    "test:history": "node scripts/test-journey-history.cjs",
+    "test:notebook": "node scripts/test-notebook.cjs",
+    "test:encounters": "node scripts/test-encounter-balance.cjs",
+    "test:growth-romance": "node scripts/test-growth-romance.cjs",
+    "test:mobile-ui": "node scripts/test-mobile-ui.cjs",
+    "test:presentation": "node scripts/test-presentation.cjs",
+    "test": "node scripts/test-all.cjs"
   },
   "dependencies": {
     "react": "^18.3.1",

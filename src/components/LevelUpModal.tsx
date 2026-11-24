@@ -1,5 +1,5 @@
 import { useRun } from "../store/useRun";
-import { STAT_KEYS, STAT_LABEL, type StatKey } from "../types/game";
+import { STAT_KEYS, STAT_LABEL, STAT_DESCRIPTION, type StatKey } from "../types/game";
 import { levelArt } from "../data/extraArtMapping";
 import ExtraArt from "./ExtraArt";
 
@@ -26,7 +26,7 @@ export default function LevelUpModal() {
               disabled={statPoints <= 0}
               className="story-button disabled:opacity-40"
             >
-              <span>{STAT_LABEL[k]}</span>
+              <span>{STAT_LABEL[k]}<small style={{display:"block",fontSize:"0.7rem",fontWeight:400,whiteSpace:"normal"}}>{STAT_DESCRIPTION[k]}</small></span>
               <span>{stats[k]} <b>+</b></span>
             </button>
           ))}

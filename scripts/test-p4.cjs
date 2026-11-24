@@ -16,19 +16,22 @@ test('viewed scenes, shop art and earned ending art are saved as discoveries', (
   run().startRun('art-discovery');
   choose('rael_tea', 0);
   assert.ok(useMeta.getState().collectedPages.includes('art:planned_02_3_cooling_tea'));
-  run().selectNode({ id: 'shop-test', type: 'shop', title: '상점', preview: '' });
+  useRun.setState({status:'choosing'});
+  const shop = { id: 'shop-test', type: 'shop', title: '상점', preview: '' };
+  useRun.setState({ choices: [shop] });
+  run().selectNode(shop);
   assert.ok(useMeta.getState().collectedPages.includes('art:item_2_4_healing_potion'));
   useMeta.getState().addEnding('rael_romance', '제목', '내용');
   assert.ok(useMeta.getState().collectedPages.includes('art:cg_rael_4_romance_tea'));
 });
 
 test('P4 collection progress distinguishes journey, NPC stories and bonus endings without double-counting legacy', () => {
-  assert.deepEqual(endingProgress([]), { collected: 0, total: 15 });
-  assert.deepEqual(endingProgress([], 'journey'), { collected: 0, total: 3 });
+  assert.deepEqual(endingProgress([]), { collected: 0, total: 21 });
+  assert.deepEqual(endingProgress([], 'journey'), { collected: 0, total: 9 });
   assert.deepEqual(endingProgress([], 'route'), { collected: 0, total: 9 });
   assert.deepEqual(endingProgress([], 'bonus'), { collected: 0, total: 3 });
   const saved = ['rael_route_happy', 'rael_route_happy', 'rael_romance', 'solo', 'rael_end'];
-  assert.deepEqual(endingProgress(saved), { collected: 3, total: 15 });
+  assert.deepEqual(endingProgress(saved), { collected: 3, total: 21 });
   assert.deepEqual(endingProgress(saved, 'route'), { collected: 1, total: 9 });
   assert.deepEqual(endingProgress(saved, 'bonus'), { collected: 1, total: 3 });
   assert.deepEqual(legacyCollected(saved).map((x) => x.id), ['rael_end']);

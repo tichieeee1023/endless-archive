@@ -24,10 +24,10 @@ test('narrative paragraphs are indented without blank lines', () => {
   assert.equal(formatNarrative('첫 문단.\n\n둘째 문단.'), '　첫 문단.\n　둘째 문단.');
 });
 
-test('art catalogue contains the expected 64 optimized assets', () => {
-  assert.equal(ALL_ART.length, 64);
-  assert.deepEqual([count('events'), count('characters'), count('items')], [40, 12, 12]);
-  assert.equal(new Set(ALL_ART.map(e=>e.id)).size, 64);
+test('art catalogue contains the expected 92 optimized assets', () => {
+  assert.equal(ALL_ART.length, 92);
+  assert.deepEqual([count('events'), count('characters'), count('items')], [56, 24, 12]);
+  assert.equal(new Set(ALL_ART.map(e=>e.id)).size, 92);
   for (const art of ALL_ART) {
     assert.match(art.src, /^\/art\/(events|characters|items)\/[\w-]+\.webp$/);
     const p = path.join(root, 'public', art.src.replace(/^\//,''));
@@ -36,7 +36,7 @@ test('art catalogue contains the expected 64 optimized assets', () => {
 });
 
 test('every P4 encounter has an image, including non-romantic story events', () => {
-  assert.equal(Object.keys(EVENT_ART).length, 33);
+  assert.equal(Object.keys(EVENT_ART).length, 104);
   for (const id of Object.keys(EVENT_ART)) assert.ok(getEncounterArt(id), `missing art for ${id}`);
   assert.equal(getEncounterArt('rael_tea')?.id, 'planned_02_3_cooling_tea');
   assert.equal(getEncounterArt('kairu_promise')?.id, 'planned_05_2_unread_promise');
@@ -44,7 +44,7 @@ test('every P4 encounter has an image, including non-romantic story events', () 
 });
 
 test('character HAPPY and relationship ending CGs are separate', () => {
-  assert.equal(Object.keys(ENDING_ART).length, 18);
+  assert.equal(Object.keys(ENDING_ART).length, 24);
   for (const npc of ['rael','seon','kairu']) {
     const happy = getEndingArt(`${npc}_route_happy`);
     const romance = getEndingArt(`${npc}_romance`);
@@ -62,7 +62,7 @@ test('character HAPPY and relationship ending CGs are separate', () => {
 });
 
 test('shop items map to actual icon image files', () => {
-  assert.deepEqual(Object.keys(SHOP_ART).sort(), ['mana','potion','will_up','wisdom_up'].sort());
+  for (const id of ['mana','potion','will_up','wisdom_up']) assert.ok(SHOP_ART[id]);
   for (const id of Object.keys(SHOP_ART)) assert.equal(getShopArt(id)?.type,'items');
 });
 
@@ -93,4 +93,86 @@ test('new and changed TSX/TS components parse', () => {
     const errors=(result.diagnostics||[]).filter(x=>x.category===ts.DiagnosticCategory.Error);
     assert.equal(errors.length,0, `${file}: ${errors.map(x=>x.messageText).join('; ')}`);
   }
+});
+
+
+test('12 new CGs map to actual companion events and exclusive rescue endings', () => {
+  const scenes = fs.readFileSync(path.join(root, 'src/data/companionEncounters.ts'), 'utf8');
+  const expected = {rael: ['unplanned_walk','destinationless_walk',['tea_taste','day_off','empty_platform']], seon: ['cooking','cooking',['bread','birthday','lullaby']], kairu: ['two_bookmarks','two_bookmarks',['blank_day','borrowed_voice','outside_view']]};
+  const unique = new Set();
+  for (const [npc,[event,suffix,dailies]] of Object.entries(expected)) {
+    const daily = getEncounterArt(`companion_${npc}_${dailies[0]}`);
+    const special = getEncounterArt(`companion_${npc}_${event}`);
+    const boss = getEncounterArt(`boss_companion_${npc}`);
+    const rescue = getEndingArt(`${npc}_defeat`);
+    assert.equal(daily.id, `cg_${npc}_daily`);
+    assert.equal(special.id, `cg_${npc}_${suffix}`);
+    assert.equal(boss.id, `cg_${npc}_before_boss`);
+    assert.equal(rescue.id, `cg_${npc}_rescue_ending`);
+    for (const id of dailies) {assert.ok(scenes.includes(`id:"${id}"`));assert.equal(getEncounterArt(`companion_${npc}_${id}`).id,daily.id);}
+    for (const a of [daily,special,boss,rescue]) {unique.add(a.id);assert.equal(a.type,'characters');assert.equal(artIsUnlocked(a,new Set()),false);}
+    assert.equal(rescue.unlock,`${npc}_defeat`);
+    assert.equal(artIsUnlocked(rescue,new Set([`${npc}_defeat`])),true);
+    assert.equal(artIsUnlocked(boss,new Set(),new Set([boss.id])),true);
+  }
+  assert.equal(unique.size,12);
+  assert.equal(getEncounterArt('companion_kairu_joke'),undefined);
+  for (const [name,mapping] of [['event',EVENT_ART],['ending',ENDING_ART]]) assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'docs/art-integration',`${name}-mapping.json`),'utf8')),mapping);
+});
+
+
+const storyArtMapping = {
+  "side_child_1": "passenger_nameless_child",
+  "side_child_2": "passenger_nameless_child",
+  "side_child_3": "passenger_nameless_child",
+  "side_postman_1": "passenger_last_postman",
+  "side_postman_2": "passenger_last_postman",
+  "side_postman_3": "passenger_last_postman",
+  "side_widow_1": "passenger_waiting_woman",
+  "side_widow_2": "passenger_waiting_woman",
+  "side_widow_3": "passenger_waiting_woman",
+  "side_author_1": "passenger_rewriting_author",
+  "side_author_2": "passenger_rewriting_author",
+  "side_author_3": "passenger_rewriting_author",
+  "side_rain": "passenger_rain_bottle",
+  "side_portrait": "passenger_faded_portrait",
+  "side_clock": "passenger_borrowed_day",
+  "side_seed": "passenger_pocket_forest",
+  "side_song": "passenger_last_note",
+  "side_bridge": "passenger_memory_bridge",
+  "side_museum": "passenger_empty_museum",
+  "side_mirror": "passenger_other_choice",
+  "main_manifest": "main_two_passengers",
+  "main_manifest_reply": "main_two_passengers",
+  "main_record": "main_two_passengers",
+  "main_mail": "main_unsent_letter",
+  "main_mail_reply": "main_unsent_letter",
+  "main_switch": "main_diverging_tracks",
+  "main_switch_reply": "main_diverging_tracks",
+  "main_platform": "main_dawn_station",
+  "main_platform_reply": "main_dawn_station"
+};
+
+test('16 new story images map to all 20 passenger scenes and 9 main scenes', () => {
+  assert.equal(Object.keys(storyArtMapping).length, 29);
+  const unique = new Set(Object.values(storyArtMapping));
+  assert.equal(unique.size, 16);
+  for (const [id, artId] of Object.entries(storyArtMapping)) {
+    const art = getEncounterArt(id);
+    assert.equal(art?.id, artId);
+    assert.equal(getEncounterArt(id, [], true)?.id, artId);
+    assert.equal(art.type, 'events');
+    assert.equal(artIsUnlocked(art, new Set()), false);
+    assert.equal(artIsUnlocked(art, new Set(), new Set([artId])), true);
+  }
+});
+
+test('dawn station appears in three suitable endings; old ending art remains available', () => {
+  for (const id of ['true_end','journey_return','journey_stay']) assert.equal(getEndingArt(id)?.id, 'main_dawn_station');
+  assert.equal(getEndingArt('journey_depart')?.id, 'planned_04_4_book_notebook');
+  const gallery = fs.readFileSync(path.join(root,'src/components/ArtGallery.tsx'),'utf8');
+  assert.match(gallery, /true_end: "planned_04_4_book_notebook"/);
+  assert.match(gallery, /journey_return: "planned_06_1_letter_reply"/);
+  assert.match(gallery, /journey_stay: "planned_02_2_conductors_logbook"/);
+  assert.match(gallery, /ids.add\(art.id\)/);
 });

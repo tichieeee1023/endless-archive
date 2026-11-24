@@ -65,7 +65,7 @@ export function generateChoices(
   if (floor === maxFloor) return [makeNode(rng, "boss", act, floor, 0)];
 
   const mid = Math.floor(maxFloor / 2);
-  const forced: NodeType | null = floor === mid && act !== 2 ? "shop" : floor === mid + 1 ? "rest"
+  const forced: NodeType | null = maxFloor === 12 ? (floor === 4 ? "shop" : floor === 8 ? "rest" : [1,3,6,7,10].includes(floor) ? "event" : null) : floor === mid && act !== 2 ? "shop" : floor === mid + 1 ? "rest"
     : [1, 3, 6].includes(floor) ? "event" : null;
 
   const count = floor === 1 ? 2 : rng() < 0.5 ? 2 : 3;

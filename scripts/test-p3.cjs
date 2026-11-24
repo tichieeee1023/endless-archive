@@ -20,8 +20,8 @@ const followup = [
   ['train_missing_minute', 'event_schedule_copied', 3],
 ];
 
-test('P3 adds exactly ten standalone random events; all remain free of NPC/romance route requirements', () => {
-  assert.equal(INDEPENDENT_ENCOUNTERS.length, 10);
+test('P3 and later retain nineteen standalone random events; all remain free of NPC/romance route requirements', () => {
+  assert.equal(INDEPENDENT_ENCOUNTERS.length, 19);
   for (const encounter of INDEPENDENT_ENCOUNTERS) {
     assert.equal(encounter.npcId, undefined);
     assert.equal(encounter.kind, 'event');

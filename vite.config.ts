@@ -7,10 +7,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "apple-touch-icon-180x180.png"],
+      includeAssets: ["archive-mark-v3.svg", "archive-mark-v3-touch.png"],
       manifest: {
         name: "종점 없는 서고",
-        short_name: "무한서고",
+        short_name: "종점 없는 서고",
         description: "끝나지 않는 열차, 각 객차가 하나의 책이다.",
         lang: "ko",
         start_url: "/",
@@ -19,9 +19,9 @@ export default defineConfig({
         background_color: "#fffefa",
         theme_color: "#fffefa",
         icons: [
-          { src: "pwa-icon-v2-192.png", sizes: "192x192", type: "image/png" },
-          { src: "pwa-icon-v2-512.png", sizes: "512x512", type: "image/png" },
-          { src: "pwa-maskable-v2-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "archive-mark-v3-192.png", sizes: "192x192", type: "image/png" },
+          { src: "archive-mark-v3-512.png", sizes: "512x512", type: "image/png" },
+          { src: "archive-mark-v3-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {

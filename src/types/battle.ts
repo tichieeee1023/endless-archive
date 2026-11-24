@@ -13,6 +13,7 @@ export interface BattleState {
   turn: number;
   log: string[];
   nextAttackBonus?: number;
+  companionGuard?: boolean;
   openingRoll?: {
     rolled: number;
     modifier: number;

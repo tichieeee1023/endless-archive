@@ -1,3 +1,5 @@
+import JourneyNotebookButton from "./JourneyNotebook";
+import { EXPANDED_STORY, mainStoryComplete } from "../data/mainStory";
 import { useRun } from "../store/useRun";
 import type { FinalDestination } from "../lib/ending";
 import { EXTRA_ART } from "../data/extraArt";
@@ -14,6 +16,7 @@ function memoryEcho(flags: string[]) {
 const DESTINATIONS: { id: FinalDestination; title: string; text: string }[] = [
   { id: "return", title: "새벽역의 이름을 되찾고 약속을 지킨다", text: "빈 차표에 새벽역을 적고, 기다리는 사람에게 답한다." },
   { id: "stay", title: "새벽역에 남아 불을 켜 둔다", text: "다음에 길을 잃은 승객도 이곳을 찾을 수 있도록." },
+  { id: "archive", title: "열차로 돌아가 서고를 맡는다", text: "아직 끝나지 않은 책들을 돌보며 나만의 다음 이야기를 준비한다." },
   { id: "depart", title: "새 목적지를 적고 떠난다", text: "약속을 품은 채, 아직 이름 없는 길로 향한다." },
 ];
 
@@ -25,13 +28,14 @@ export default function FinalChoiceScreen() {
       <section className="chapter-page final-choice-page">
         <header className="prologue-topline">
           <span>이름 없는 역</span><span>THE LAST PAGE · 03</span>
+        <JourneyNotebookButton />
         </header>
         <div className="chapter-visual"><ExtraArt src={EXTRA_ART.story_dawn_station_bench} className="chapter-illustration" /></div>
         <div className="chapter-content">
           <p className="section-kicker">THE UNNAMED STATION · ENDING</p>
           <h1>새벽역의 마지막 승객</h1>
           <div className="prologue-divider"><span>✦</span></div>
-          <p className="chapter-prose">열차가 멈춘다. 간판에는 지워졌던 이름, 새벽역이 돌아와 있다. 플랫폼 끝에는 당신과 한 쌍인 차표를 든 사람이 서 있다. 그날 왜 혼자 떠났는지, 얼굴을 마주하면 기억날지도 모른다.\n\n{memoryEcho(flags)}</p>
+          <p className="chapter-prose">열차가 멈춘다. 간판에는 지워졌던 이름, 새벽역이 돌아와 있다. 플랫폼 끝에는 당신과 한 쌍인 차표를 든 사람이 서 있다. {flags.includes(EXPANDED_STORY) ? (mainStoryComplete(new Set(flags)) ? "함께 탔던 기록과 떠났던 이유, 되찾은 이름이 하나로 이어진다. 이제 누구도 두 사람의 결말을 대신 쓰지 않는다." : "되찾지 못한 기억도 남아 있지만, 이제 직접 대답할 수 있다.") : "그날 왜 혼자 떠났는지, 얼굴을 마주하면 기억날지도 모른다."}{"\n\n"}{memoryEcho(flags)}</p>
           <p className="chapter-prompt">그 사람에게 어떤 답을 건넬까?</p>
           <div className="chapter-choices">
             {DESTINATIONS.map((destination) => (

@@ -23,7 +23,7 @@ export default function StoryOpeningScreen() {
           <p className="chapter-prompt">{story.prompt}</p>
           <div className="chapter-choices">
             {story.choices.map((choice, index) => (
-              <button className="story-button" key={choice.flag} onClick={() => chooseStoryOpening(index)}>
+              <button className="story-button" key={choice.flag} data-sfx="page" onClick={() => chooseStoryOpening(index)}>
                 <span>{choice.text}</span><span aria-hidden="true">↗</span>
               </button>
             ))}

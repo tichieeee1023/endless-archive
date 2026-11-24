@@ -9,16 +9,24 @@ import { bonusCatalogFor, endingProgress, legacyCollected, routeCatalogFor } fro
 import { shareUrl } from "../lib/seedFromUrl";
 import SlotSwitcher from "./SlotSwitcher";
 import EndingRecallModal from "./EndingRecallModal";
+import JourneyRecallModal from "./JourneyRecallModal";
+import { JOURNEY_OUTCOME_LABEL } from "../lib/journeyHistory";
 import archiveIllustration from "../assets/illustrations/archive.webp";
 
 interface Props { open: boolean; onClose: () => void; }
 const NPC_ORDER: NpcId[] = ["rael", "seon", "kairu"];
 
 export default function ArchiveModal({ open, onClose }: Props) {
-  const { endings, runCount, victories, deaths } = useMeta();
+  const { endings, runCount, victories, deaths, defeats, journeyHistory } = useMeta();
   const { seed, startRun } = useRun();
+  const [section, setSection] = useState<"history" | "endings" | "art" | "settings">("history");
+  const contentRef = useRef<HTMLDivElement>(null);
   const [seedInput, setSeedInput] = useState("");
   const [recallId, setRecallId] = useState<string | null>(null);
+  const [journeyId, setJourneyId] = useState<string | null>(null);
+  const [historyLimit, setHistoryLimit] = useState(5);
+  const recalledJourney = journeyHistory.find((record) => record.id === journeyId);
+  const nestedOpen = Boolean(recallId || recalledJourney);
   const [shareMessage, setShareMessage] = useState("");
   const closeRef = useRef<HTMLButtonElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
@@ -32,18 +40,20 @@ export default function ArchiveModal({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) return;
     lastFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setSection("history");
+    contentRef.current?.scrollTo({top: 0});
     closeRef.current?.focus();
     return () => { lastFocus.current?.focus(); };
   }, [open]);
 
   useEffect(() => {
-    if (!open || recallId) return;
+    if (!open || nestedOpen) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); onClose(); }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, recallId, onClose]);
+  }, [open, nestedOpen, onClose]);
 
   if (!open) return null;
 
@@ -89,6 +99,8 @@ export default function ArchiveModal({ open, onClose }: Props) {
 
   const loadSeed = () => {
     if (!seedInput.trim()) return;
+    const run = useRun.getState();
+    if (run.seed && run.status !== "ended" && !window.confirm("현재 슬롯의 진행 중인 여정이 대체됩니다. 계속할까요?")) return;
     startRun(seedInput.trim().slice(0, 16));
     setSeedInput("");
     onClose();
@@ -96,18 +108,19 @@ export default function ArchiveModal({ open, onClose }: Props) {
 
   const resetAll = () => {
     if (!confirm("모든 기록을 초기화합니다. 되돌릴 수 없습니다.\n계속할까요?")) return;
+    localStorage.removeItem("endless-archive-run");
     for (const slot of [1, 2, 3]) localStorage.removeItem(`endless-archive-run_slot${slot}`);
-    useMeta.setState({ runCount: 0, deaths: 0, victories: 0, collectedPages: [], endings: [], endingLog: {} });
+    useMeta.setState({ runCount: 0, deaths: 0, defeats: 0, victories: 0, collectedPages: [], endings: [], endingLog: {}, legacyEndingLog: {}, journeyHistory: [] });
     startRun();
     onClose();
   };
 
   return (
     <div className="archive-overlay">
-      <div className="archive-screen" role="dialog" aria-modal={recallId ? undefined : true} aria-labelledby="archive-title"
+      <div className="archive-screen" role="dialog" aria-modal={nestedOpen ? undefined : true} aria-labelledby="archive-title"
         onKeyDown={(event) => {
-          if (event.key !== "Tab" || recallId) return;
-          const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)"));
+          if (event.key !== "Tab" || nestedOpen) return;
+          const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)" )).filter(control => control.getClientRects().length > 0);
           const first = controls[0], last = controls.at(-1);
           if (!first || !last) return;
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -119,7 +132,11 @@ export default function ArchiveModal({ open, onClose }: Props) {
           <button ref={closeRef} onClick={onClose} className="icon-button" aria-label="서고 닫기">✕</button>
         </header>
         <SlotSwitcher />
-        <div className="archive-content">
+        <nav className="archive-nav" aria-label="서고 분류">
+          {([{id:"history",label:"여정 기록"},{id:"endings",label:"엔딩"},{id:"art",label:"삽화"},{id:"settings",label:"공유·관리"}] as const).map(tab => <button key={tab.id} type="button" aria-pressed={section === tab.id} onClick={() => {setSection(tab.id); contentRef.current?.scrollTo({top:0});}}>{tab.label}</button>)}
+        </nav>
+        <div className="archive-content" ref={contentRef}>
+          {section === "history" && <>
           <div className="archive-illustration" aria-hidden="true">
             <img src={archiveIllustration} alt="" width="1672" height="941" loading="lazy" />
           </div>
@@ -129,9 +146,32 @@ export default function ArchiveModal({ open, onClose }: Props) {
               <Stat label="도전" value={runCount} />
               <Stat label="클리어" value={victories} />
               <Stat label="사망" value={deaths} />
+              <Stat label="구원 결말" value={defeats} />
             </div>
           </section>
-          <section aria-labelledby="archive-collection-heading">
+          <section aria-labelledby="archive-journeys-heading">
+            <div className="archive-collection-heading">
+              <h2 id="archive-journeys-heading" className="archive-section-title">여정별 기록</h2>
+              <strong>{journeyHistory.length}회</strong>
+            </div>
+            <p className="archive-note archive-intro">모든 슬롯에서 마친 여정을 각각 보관합니다. 같은 결말이어도 그날의 후일담과 인물 사건을 다시 읽을 수 있어요.</p>
+            {runCount > journeyHistory.length && <p className="archive-note">이전 버전의 {runCount - journeyHistory.length}회는 개별 여정 기록이 없습니다. 기존 결말 본문은 발견한 결말에서 읽을 수 있어요.</p>}
+            {journeyHistory.length === 0 ? <p className="archive-note">새 여정을 마치면 이곳에 첫 기록이 남습니다.</p> : (
+              <div className="archive-endings">
+                {journeyHistory.slice(0, historyLimit).map((record) => (
+                  <button key={record.id} type="button" className="ending-card is-unlocked" onClick={() => setJourneyId(record.id)}>
+                    <div className="ending-card__heading"><span className="ending-card__grade">{record.number}번째</span><strong>{record.journey.title}</strong></div>
+                    <p>{JOURNEY_OUTCOME_LABEL[record.outcome]} · 슬롯 {record.slot} · {new Date(record.timestamp).toLocaleString("ko-KR")}</p>
+                    <p>인물 사건 {record.routes.length}개 · 특별한 인연 {record.bonuses.length}개</p>
+                    <span className="ending-card__read">이 여정 다시 읽기 →</span>
+                  </button>
+                ))}
+                {historyLimit < journeyHistory.length && <button type="button" className="story-button justify-center" onClick={() => setHistoryLimit((limit) => limit + 10)}>이전 여정 더 보기</button>}
+              </div>
+            )}
+          </section>
+          </>}
+          {section === "endings" && <section aria-labelledby="archive-collection-heading">
             <div className="archive-collection-heading">
               <h2 id="archive-collection-heading" className="archive-section-title">발견한 결말</h2>
               <strong>{progress.collected} / {progress.total}</strong>
@@ -176,6 +216,9 @@ export default function ArchiveModal({ open, onClose }: Props) {
               </section>
             )}
           </section>
+          }
+          {section === "art" && <ArtGallery endings={endings} />}
+          {section === "settings" && <>
           <section>
             <h2 className="archive-section-title">여정 공유</h2>
             <div className="seed-current"><span>현재 시드</span><span className="seed-value">#{seed}</span><button onClick={copySeed} className="small-button">공유</button></div>
@@ -185,13 +228,14 @@ export default function ArchiveModal({ open, onClose }: Props) {
               <button onClick={loadSeed} disabled={!seedInput.trim()} className="small-button small-button--dark">시작</button>
             </div>
           </section>
-          <ArtGallery endings={endings} />
           <section className="archive-reset">
             <button onClick={resetAll} className="reset-button">모든 기록 초기화</button>
             <p className="archive-note">모든 슬롯의 여정과 도감이 삭제됩니다.</p>
           </section>
+          </>}
         </div>
-        <EndingRecallModal endingId={recallId} onClose={() => setRecallId(null)} />
+        <EndingRecallModal key={recallId} endingId={recallId} onClose={() => setRecallId(null)} />
+        {recalledJourney && <JourneyRecallModal record={recalledJourney} onClose={() => setJourneyId(null)} />}
       </div>
     </div>
   );

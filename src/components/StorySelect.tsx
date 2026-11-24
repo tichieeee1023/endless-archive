@@ -28,7 +28,7 @@ export default function StorySelect() {
                   <p>{book.description}</p>
                   <small>{book.promise}</small>
                 </div>
-                <button className="story-button story-button--primary story-book-card__button" onClick={() => selectStory(book.id)}>
+                <button className="story-button story-button--primary story-book-card__button" data-sfx="page" onClick={() => selectStory(book.id)}>
                   이 책을 펼친다 <span aria-hidden="true">→</span>
                 </button>
               </article>

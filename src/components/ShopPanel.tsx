@@ -1,3 +1,4 @@
+import { potionHeal } from "../lib/combat";
 import { getShopArt } from "../data/artLibrary";
 import { useRun } from "../store/useRun";
 import { STAT_LABEL } from "../types/game";
@@ -5,7 +6,7 @@ import { formatCharmEffects, formatStatBonuses } from "../lib/equipment";
 
 export default function ShopPanel() {
   const {
-    shopItems, shopCharms, shopkeeper, gold, weaponPower, armorPower, luck,
+    shopItems, shopCharms, shopkeeper, gold, weaponPower, armorPower, luck, maxHp, maxMp, stats,
     healthPotions, focusPotions, ownedWeapons, equippedWeaponId, ownedCharms, equippedCharmId,
     buyItem, buyCharm, equipWeapon, equipCharm, sellWeapon, closeShop,
   } = useRun();
@@ -31,15 +32,21 @@ export default function ShopPanel() {
         <span className="shop-gold">{gold} G</span>
       </div>
 
-      {shopItems.map((item) => {
+      {([{ label: "물약", effects: ["heal", "mana"] }, { label: "장비", effects: ["weapon", "armor", "luck"] }, { label: "능력치 강화", effects: ["stat"] }]).map(group => {
+        const items = shopItems.filter(item => group.effects.includes(item.effect));
+        if (!items.length) return null;
+        return <details className="shop-category" key={group.label} open={group.label === "물약"}>
+          <summary>{group.label} <small>{items.length}종</small></summary>
+          <div className="shop-category__items">{items.map((item) => {
         const bagFull = (item.effect === "heal" && healthPotions >= 5)
           || (item.effect === "mana" && focusPotions >= 5)
           || (item.effect === "weapon" && ownedWeapons.length >= 8);
         const maxed = (item.effect === "luck" && luck >= 1) || (item.effect === "armor" && armorPower >= 3);
         const outOfStock = item.stock !== undefined && item.stock <= 0;
         const art = getShopArt(item.id);
-        const effect = item.effect === "heal" ? `체력 한 칸 회복 · 보유 ${healthPotions}/5`
-          : item.effect === "mana" ? `집중력 한 칸 회복 · 보유 ${focusPotions}/5`
+        const unavailable = outOfStock ? "품절" : bagFull ? "보관 한도 도달" : maxed ? "최대 강화 또는 보유 중" : gold < item.price ? "골드 부족" : null;
+        const effect = item.effect === "heal" ? `체력 최대 ${potionHeal(maxHp, stats.charm)} 회복 · 보유 ${healthPotions}/5`
+          : item.effect === "mana" ? `집중력 최대 ${Math.max(8, Math.ceil(maxMp / 5))} 회복 · 보유 ${focusPotions}/5`
           : item.effect === "stat" ? `${item.stat ? STAT_LABEL[item.stat] : "능력치"} +${item.amount}`
           : item.effect === "weapon" ? bagFull ? "무기 보관함이 가득 참" : `공격 피해 +${item.amount}${formatStatBonuses(item.statBonus).length ? ` · ${formatStatBonuses(item.statBonus).join(" · ")}` : ""} · 장착·판매 가능`
           : item.effect === "armor" ? maxed ? "최대 강화" : `피격 피해 -${item.amount}`
@@ -54,15 +61,17 @@ export default function ShopPanel() {
           >
             <span className="shop-item__content">
               {art && <span className="shop-item__icon-frame"><img className="shop-item__icon" src={art.src} alt="" width="52" height="52" loading="lazy" decoding="async" /></span>}
-              <span className="shop-item__details"><span className="shop-item__name">{item.name}</span><small className="shop-effect">{outOfStock ? "품절" : effect}</small></span>
+              <span className="shop-item__details"><span className="shop-item__name">{item.name}</span><small className="shop-effect">{effect}{unavailable && <span className="shop-unavailable"> · {unavailable}</span>}</small></span>
             </span>
             <span className="shop-gold">{item.price} G</span>
           </button>
         );
+          })}</div>
+        </details>;
       })}
 
-      {shopCharms && shopCharms.length > 0 && <section className="charm-market">
-        <div className="charm-market__heading"><h3>떠돌이 부적</h3><span>이번 상점의 무작위 물품</span></div>
+      {shopCharms && shopCharms.length > 0 && <details className="shop-category charm-market">
+        <summary>떠돌이 부적 <small>{shopCharms.length}종</small></summary><div className="shop-category__items">
         {shopCharms.map((charm) => {
           const outOfStock = charm.stock <= 0;
           const art = getShopArt(charm.id);
@@ -70,13 +79,13 @@ export default function ShopPanel() {
             <button key={charm.id} onClick={() => buyCharm(charm.id)} disabled={gold < charm.price || outOfStock} className="story-button shop-item charm-offer">
               <span className="shop-item__content">
                 {art && <span className="shop-item__icon-frame"><img className="shop-item__icon" src={art.src} alt="" width="52" height="52" loading="lazy" decoding="async" /></span>}
-                <span className="shop-item__details"><span className="shop-item__name">{charm.name}</span><small className="shop-effect">{outOfStock ? "품절" : formatCharmEffects(charm.effects).join(" · ")}</small></span>
+                <span className="shop-item__details"><span className="shop-item__name">{charm.name}</span><small className="shop-effect">{formatCharmEffects(charm.effects).join(" · ")}{(outOfStock || gold < charm.price) && <span className="shop-unavailable"> · {outOfStock ? "품절" : "골드 부족"}</span>}</small></span>
               </span>
               <span className="shop-gold">{charm.price} G</span>
             </button>
           );
         })}
-      </section>}
+      </div></details>}
 
       <details className="weapon-storage">
         <summary>무기 보관함 · {ownedWeapons.length}개</summary>
@@ -117,9 +126,9 @@ export default function ShopPanel() {
         )}
       </details>
 
-      <button onClick={closeShop} className="story-button story-button--primary justify-center">
+      <div className="shop-exit"><button onClick={closeShop} className="story-button story-button--primary justify-center">
         {spirit ? "정령 곁을 떠난다" : "상인을 떠난다"}
-      </button>
+      </button></div>
     </div>
   );
 }

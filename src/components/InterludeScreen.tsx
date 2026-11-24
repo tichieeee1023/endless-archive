@@ -1,3 +1,4 @@
+import JourneyNotebookButton from "./JourneyNotebook";
 import { interludeFor } from "../data/interludes";
 import { unnamedStationInterludeFor } from "../data/unnamedStation";
 import { useRun } from "../store/useRun";
@@ -19,6 +20,7 @@ export default function InterludeScreen() {
       <section className="chapter-page">
         <header className="prologue-topline">
           <span>이름 없는 역</span><span>MAIN STORY · 0{interlude.act}</span>
+        <JourneyNotebookButton />
         </header>
         <div className="chapter-visual"><ExtraArt src={art} className="chapter-illustration" /></div>
         <div className="chapter-content">
@@ -29,7 +31,7 @@ export default function InterludeScreen() {
           <p className="chapter-prompt">{interlude.prompt ?? "이 장면에서 당신은 어떻게 할까?"}</p>
           <div className="chapter-choices">
             {interlude.choices.map((choice, index) => (
-              <button className="story-button" key={choice.flag} onClick={() => chooseInterlude(index)}>
+              <button className="story-button" key={choice.flag} data-sfx="page" onClick={() => chooseInterlude(index)}>
                 <span>{choice.text}</span><span aria-hidden="true">↗</span>
               </button>
             ))}

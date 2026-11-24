@@ -1,3 +1,6 @@
+import { romanceEchoes } from "../data/romanceEncounters";
+import { sideStoryEchoes } from "../data/sideStories";
+import { EXPANDED_STORY, mainStoryComplete } from "../data/mainStory";
 import type { NpcId } from "../types/npc";
 
 export interface EndingResult {
@@ -19,7 +22,8 @@ export interface RunEndings {
   bonuses: EndingResult[];
 }
 
-export type FinalDestination = "return" | "stay" | "depart";
+export const FINAL_DESTINATIONS = ["return", "stay", "depart", "archive"] as const;
+export type FinalDestination = (typeof FINAL_DESTINATIONS)[number];
 
 const NPC_IDS: NpcId[] = ["rael", "seon", "kairu"];
 
@@ -55,9 +59,28 @@ const JOURNEY: EndingResult = {
   id: "solo", npcId: null, title: "서고의 주인",
   text: "당신은 열차의 마지막 페이지를 넘긴다. 창밖에 처음 보는 역이 나타난다.\n\n어떤 이야기는 끝까지 듣지 못했고, 어떤 인사는 다음으로 미뤄 두었다. 그렇다고 이 여정이 비어 있었던 것은 아니다. 수첩에는 당신이 직접 고른 문장들이 남아 있다.\n\n문이 열리자 서늘한 바람이 불어온다. 당신은 차표를 주머니에 넣고 한 발을 내딛는다.\n\n돌아올 곳도, 새로 찾아갈 곳도 이제 당신이 정할 수 있다.",
 };
+const ARCHIVE: EndingResult = {
+  ...JOURNEY,
+  text: "당신은 기다리던 사람에게 인사를 건네고 열차로 돌아온다. 아직 이름을 찾지 못한 이야기들이 서가에 남아 있다. 이번에는 그 이야기를 읽기 위해, 스스로 이곳에 남기로 했다.\n\n창가의 서가에 빈 책 한 권을 꽂는다. 다음에 누군가 이 열차에 오면 그 사람의 이야기도 놓일 자리가 있을 것이다.\n\n이제 당신은 서고의 주인이다. 언제 책을 펼치고 언제 여행을 떠날지, 그 결정은 당신의 몫이다.",
+};
 const TRUTH: EndingResult = {
   id: "true_end", npcId: null, title: "쓰이지 않은 첫 문장",
   text: "새벽역의 간판에 이름이 돌아온다. 두 장의 차표가 맞물리고, 오래전 당신이 남긴 약속도 온전한 문장이 된다. 당신은 누군가를 찾아 이 열차에 올랐다. 그 이유를 잊게 된 건 도망치기 위해서가 아니라, 다시 만나 직접 답하기 위해서였다.\n\n플랫폼에 선 사람은 당신이 늦었다고 탓하지 않는다. 당신은 그날 끝내 하지 못했던 말을 건넨다. 이제 새벽역은 누구도 지워지지 않고 도착할 수 있는 곳이 된다.\n\n당신은 차표에 역 이름을 적는다. 이번에는 두 사람이 함께 내린다.",
+};
+
+const FINAL_DEFEAT: Record<NpcId, EndingResult> = {
+  rael: {
+    id: "rael_defeat", npcId: "rael", title: "비상 정차",
+    text: "마지막 장의 문장이 당신을 덮치는 순간, 열차가 날카로운 소리를 내며 멈춘다. 회중시계의 뚜껑이 열리고, 라엘이 당신과 페이지 사이에 선다.\n\n“운행 규정 제9조. 승객이 치명상을 입을 우려가 있을 때, 차장은 열차를 정차시킬 수 있습니다.”\n\n그는 시계를 거꾸로 돌려 당신이 쓰러지기 전의 객차로 데려다 놓는다. “규정에 따른 조치입니다.” 목소리는 평소처럼 건조하지만, 시계를 쥔 손끝이 떨리고 있다.\n\n마지막 장은 아직 넘어가지 않았다. 다음 열차가 오면, 이번에는 다른 방식으로 맞설 수 있을 것이다.",
+  },
+  seon: {
+    id: "seon_defeat", npcId: "seon", title: "부러진 검 곁에서",
+    text: "무릎이 꺾이는 순간, 익숙한 손이 당신의 어깨를 붙잡는다. 세온이 금이 간 검을 뽑아 들고 마지막 장의 그림자 앞을 가로막는다.\n\n“여기서 끝나면 안 되지. 너한테 아직 못 들은 얘기가 많아.”\n\n그는 이를 악물고 당신을 객차 밖으로 끌어낸다. 검날의 균열이 한 줄 더 늘었지만, 그는 웃고 있다. “다음엔 같이 서자. 이번엔 내가 뒤에서 받쳐 줄게.”\n\n마지막 장은 아직 끝나지 않았다. 다음 열차에서 다시 도전할 수 있다.",
+  },
+  kairu: {
+    id: "kairu_defeat", npcId: "kairu", title: "여백에 적힌 이름",
+    text: "페이지가 찢어지려는 찰나, 책장 가장자리에서 낯익은 목소리가 들린다. ‘아직이야. 여기서 끝나는 문장은 쓴 적 없어.’\n\n카이루가 손등의 글자를 걷어 올려 당신의 이름을 여백에 적는다. 빈칸에 이름이 들어가자 마지막 장이 한 박자 물러선다.\n\n“이번엔 내가 먼저 썼어. 네 결말은 이렇게 끝나지 않아.” 그는 웃지만 잉크가 번진 손끝이 조금 떨린다.\n\n이야기는 중단됐을 뿐이다. 다음 열차에서, 이어서 쓸 수 있다.",
+  },
 };
 
 const RETURN_HOME: EndingResult = {
@@ -114,7 +137,8 @@ function addJourneyEchoes(ending: EndingResult, flags: Set<string>): EndingResul
         : flags.has("interlude_act2_read")
           ? "자신의 책을 첫 장부터 읽은 끝에, 비 오는 밤의 장면이 조금 더 또렷해졌다."
           : "";
-  return { ...ending, text: [ending.text, firstInterlude, interlude, ...echoes].filter(Boolean).join("\n\n") };
+  const mainEcho = flags.has(EXPANDED_STORY) && flags.has("main_reason_proof") ? "그날 두 사람이 각자 맡았던 일을 기억한다. 이제 기다림도 출발도 서로의 선택으로 남길 수 있다." : "";
+  return { ...ending, text: [ending.text, ...(flags.has(EXPANDED_STORY) ? [] : [firstInterlude, interlude]), mainEcho, ...echoes].filter(Boolean).join("\n\n") };
 }
 
 /** Only mutually-exclusive, explicitly chosen story flags can finish a route. */
@@ -132,9 +156,13 @@ export function resolveRunEndings(flags: string[], victory: boolean): RunEndings
   const routes = resolveRouteEndings(flags);
   const bonuses = routes.flatMap((route) =>
     route.grade === "happy" && known.has(`romance_${route.npcId}_promise`)
-      ? [BONUS_ENDINGS[route.npcId]] : [],
+      ? [{ ...BONUS_ENDINGS[route.npcId], text: [BONUS_ENDINGS[route.npcId].text, ...romanceEchoes(route.npcId, known)].join("\n\n") }] : [],
   );
   let journey = DEATH;
+  if (!victory) {
+    const rescuer = NPC_IDS.find((npcId) => known.has(`final_defeat_${npcId}`));
+    if (rescuer) journey = FINAL_DEFEAT[rescuer];
+  }
   if (victory) {
     if (known.has("ending_stay")) journey = STAY_ABOARD;
     else if (known.has("ending_depart")) journey = NEW_DESTINATION;
@@ -148,9 +176,12 @@ export function resolveRunEndings(flags: string[], victory: boolean): RunEndings
       ) || (
         known.has("station_event_old_promise") && known.has("station_event_full_name")
       );
-      journey = foundThePromise ? TRUTH : RETURN_HOME;
-    } else journey = JOURNEY;
-    if (journey.id !== "death" && journey.id !== "solo") journey = addJourneyEchoes(journey, known);
+      journey = (known.has(EXPANDED_STORY) ? mainStoryComplete(known) : foundThePromise) ? TRUTH : RETURN_HOME;
+    } else if (known.has("ending_archive")) journey = ARCHIVE;
+    else journey = JOURNEY;
+    if (journey.id !== "death" && (journey.id !== "solo" || known.has("ending_archive"))) journey = addJourneyEchoes(journey, known);
   }
+  const passengerEchoes = sideStoryEchoes(known);
+  if (passengerEchoes.length) journey = { ...journey, text: [journey.text, ...passengerEchoes].join("\n\n") };
   return { journey, routes, bonuses };
 }

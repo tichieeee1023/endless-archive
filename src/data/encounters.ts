@@ -1,4 +1,8 @@
+import { ROMANCE_ENCOUNTERS } from "./romanceEncounters";
+import { SIDE_STORY_ENCOUNTERS } from "./sideStories";
+import { MAIN_STORY_ENCOUNTERS } from "./mainStory";
 import type { Encounter } from "../types/encounter";
+import { COMPANION_ENCOUNTERS, BOSS_COMPANION_ENCOUNTERS } from "./companionEncounters";
 import { MEMORY_ENCOUNTERS } from "./memories";
 import { INDEPENDENT_ENCOUNTERS } from "./independentEncounters";
 import { UNNAMED_STATION_ENCOUNTERS } from "./unnamedStationEncounters";
@@ -94,7 +98,7 @@ export const ENCOUNTERS: Encounter[] = [
       } },
       { text: "“자유로워진 뒤에도 당신과 함께하고 싶어요.”", require: { flagsAll: ["rael_truth", "story_rael_exception", "rael_walk_together"] }, result: {
         text: "라엘이 장부의 마지막 줄에 ‘갱신 거부’라고 적는다. 회중시계는 앞으로 흐른다.\n\n그가 객차 문을 열고 당신에게 손을 내민다. “이제는, 제가 원해서 함께 갑니다.”",
-        setFlags: ["route_rael_happy", "romance_rael_promise"],
+        setFlags: ["route_rael_happy", "romance_rael_promise"], nextId: "romance_scene_rael_two_cups",
       } },
     ],
   },
@@ -189,7 +193,7 @@ export const ENCOUNTERS: Encounter[] = [
       } },
       { text: "“그들을 찾은 뒤에도, 당신과 함께 걷고 싶어요.”", require: { flagsAll: ["seon_travel_world", "story_seon_signal", "seon_find_home"] }, result: {
         text: "폐허의 어둠에서 세 번의 불빛이 다시 답한다. 세온이 등불을 들고 달려가다 당신을 돌아본다.\n\n“좋아. 이번에는 같이 가자. 그다음 길도.”",
-        setFlags: ["route_seon_happy", "romance_seon_promise"],
+        setFlags: ["route_seon_happy", "romance_seon_promise"], nextId: "romance_scene_seon_quiet_morning",
       } },
     ],
   },
@@ -284,11 +288,16 @@ export const ENCOUNTERS: Encounter[] = [
       } },
       { text: "“당신이 자유롭다면, 함께 이야기를 쓰고 싶어요.”", require: { flagsAll: ["kairu_stayed", "story_kairu_authorship", "kairu_asked"] }, result: {
         text: "카이루가 마지막 페이지에 자신의 이름을 적는다. 아무도 그에게 다음 문장을 명령하지 않는다.\n\n그가 펜을 당신에게 건넨다. “그럼, 네 마음을 묻는 일부터 시작할게.”",
-        setFlags: ["route_kairu_happy", "romance_kairu_promise"],
+        setFlags: ["route_kairu_happy", "romance_kairu_promise"], nextId: "romance_scene_kairu_unwritten_date",
       } },
     ],
   },
   ...MEMORY_ENCOUNTERS,
+  ...COMPANION_ENCOUNTERS,
+  ...BOSS_COMPANION_ENCOUNTERS,
+  ...ROMANCE_ENCOUNTERS,
   ...INDEPENDENT_ENCOUNTERS,
   ...UNNAMED_STATION_ENCOUNTERS,
+  ...MAIN_STORY_ENCOUNTERS,
+  ...SIDE_STORY_ENCOUNTERS,
 ];

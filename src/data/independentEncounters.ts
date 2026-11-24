@@ -305,3 +305,10 @@ export const INDEPENDENT_ENCOUNTERS: Encounter[] = [
     ],
   },
 ];
+
+/** Two-part common stories, shared by the notebook and optional reunion offers. */
+export const COMMON_CHAINS = [
+  ["train_letter", "train_letter_echo"], ["train_empty_seat", "train_seat_owner"],
+  ["train_wrong_ticket", "train_ticket_station"], ["train_reverse_schedule", "train_missing_minute"],
+  ["train_window_station", "train_window_station_echo"], ["train_blank_page", "train_page_reader"],
+];

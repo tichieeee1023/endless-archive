@@ -1,3 +1,4 @@
+import { sideStoryOffer } from "../lib/sideStoryOffer";
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -7,7 +8,8 @@ import type { BattleState } from "../types/battle";
 import type { CharmEffect, CharmItem, NodeResult, ShopCharmOffer, ShopItem, WeaponItem } from "../types/node";
 import type { NpcId } from "../types/npc";
 import { generateChoices } from "../lib/mapgen";
-import { pickWeightedEncounter } from "../lib/encounterPool";
+import { companionFor, reunionOffer } from "../lib/companions";
+import { eligibleEncounters, pickWeightedEncounter } from "../lib/encounterPool";
 import { spawnEnemy } from "../data/enemies";
 import { ENCOUNTERS } from "../data/encounters";
 import { getEncounterArt, getShopArt } from "../data/artLibrary";
@@ -18,14 +20,20 @@ import { formatCharmEffects, formatStatBonuses } from "../lib/equipment";
 import { isChoiceAvailable } from "../lib/encounterChoice";
 import { STORY_PROGRESS, migrateStoryProgress } from "../lib/storyProgress";
 import { bondProtection } from "../lib/bond";
+import { RESCUE_AFFINITY, FINAL_RESCUE_AFFINITY, RESCUE_HP_RATIO, RESCUE_GOLD_LOSS, RESCUE_TEXT, closestBond } from "../lib/defeat";
+import { skillCost, willReduction, evadeChance, potionHeal, basicDamage, skillDamage, openingStat, braceBonus, counterFloor } from "../lib/combat";
 import { isLastBossTelegraph } from "../lib/battlePattern";
-import type { EndingResult } from "../lib/ending";
+import { resolveRunEndings, type EndingResult } from "../lib/ending";
+import { newJourneyId } from "../lib/journeyHistory";
 import { audio } from "../lib/audio";
 import { slotRef } from "./useSaveSlots";
+import { migrateLegacySave } from "../lib/saveCompatibility";
 import { STORY_BOOKS } from "../data/stories";
 import { interludeFor } from "../data/interludes";
 import { UNNAMED_STATION_OPENING, unnamedStationInterludeFor } from "../data/unnamedStation";
-import type { FinalDestination } from "../lib/ending";
+import { FINAL_DESTINATIONS, type FinalDestination } from "../lib/ending";
+
+import { EXPANDED_STORY, chapterLength, storyNode } from "../data/mainStory";
 
 const ACTS = 3;
 const FLOORS_PER_ACT = 8;
@@ -131,6 +139,7 @@ function rememberSeenArt(encounters: unknown, flags: unknown) {
 }
 
 interface RunState {
+  journeyId: string | null;
   seed: string;
   storyId: string;
   act: number;
@@ -175,6 +184,7 @@ interface RunState {
   chooseInterlude: (choice: number) => void;
   chooseFinalDestination: (destination: FinalDestination) => void;
   markEndingRecorded: (ending: EndingResult) => void;
+  recordCompletedJourney: () => void;
   selectNode: (node: MapNode) => void;
   advanceFloor: () => void;
   playerAttack: () => void;
@@ -188,6 +198,8 @@ interface RunState {
   sellWeapon: (weaponId: string) => void;
   closeShop: () => void;
   useHealingPotion: () => void;
+  autoHealingPotion: () => void;
+  autoFocusPotion: () => void;
   useFocusPotion: () => void;
   pickEncounter: (act: number) => string | null;
   resolveEncounterChoice: (i: number) => void;
@@ -203,7 +215,10 @@ interface RunState {
 }
 
 const slotStorage = createJSONStorage<any>(() => ({
-  getItem: (name) => localStorage.getItem(`${name}_slot${slotRef.current}`),
+  getItem: (name) => {
+    migrateLegacySave(localStorage);
+    return localStorage.getItem(`${name}_slot${slotRef.current}`);
+  },
   setItem: (name, value) => localStorage.setItem(`${name}_slot${slotRef.current}`, value),
   removeItem: (name) => localStorage.removeItem(`${name}_slot${slotRef.current}`),
 }));
@@ -211,7 +226,7 @@ const slotStorage = createJSONStorage<any>(() => ({
 export const useRun = create<RunState>()(
   persist(
     (set, get) => ({
-      seed: "", storyId: "", act: 1, floor: 1,
+      journeyId: null, seed: "", storyId: "", act: 1, floor: 1,
       stats: INITIAL_STATS,
       hp: 60, maxHp: 60, mp: 40, maxMp: 40, weaponPower: 0, armorPower: 0, luck: 0,
       healthPotions: 1, focusPotions: 1, ownedWeapons: [], equippedWeaponId: null,
@@ -225,7 +240,7 @@ export const useRun = create<RunState>()(
       startRun: (seed) => {
         const s = seed ?? Math.random().toString(36).slice(2, 10);
         set({
-          seed: s, storyId: "", act: 1, floor: 1, stats: { ...INITIAL_STATS },
+          journeyId: newJourneyId(), seed: s, storyId: "", act: 1, floor: 1, stats: { ...INITIAL_STATS },
           hp: 60, maxHp: 60, mp: 40, maxMp: 40, weaponPower: 0, armorPower: 0, luck: 0,
           healthPotions: 1, focusPotions: 1, ownedWeapons: [], equippedWeaponId: null,
           ownedCharms: [], equippedCharmId: null,
@@ -275,8 +290,8 @@ export const useRun = create<RunState>()(
         if (!choice) return;
         set({
           status: "choosing",
-          choices: generateChoices(s.seed, 1, 1, FLOORS_PER_ACT),
-          flags: [...s.flags, choice.flag],
+          choices: generateChoices(s.seed, 1, 1, chapterLength([EXPANDED_STORY])),
+          flags: [...s.flags, choice.flag, EXPANDED_STORY],
           logs: [...s.logs, { id: (s.logs.at(-1)?.id ?? -1) + 1, text: choice.log, type: "sys" }],
         });
       },
@@ -294,47 +309,57 @@ export const useRun = create<RunState>()(
           interludeAct: null,
           current: null,
           nodeResult: null,
-          choices: generateChoices(s.seed, s.act, 1, FLOORS_PER_ACT),
+          choices: generateChoices(s.seed, s.act, 1, chapterLength(s.flags)),
           flags: [...s.flags, choice.flag],
           logs: [...s.logs, { id: (s.logs.at(-1)?.id ?? -1) + 1, text: choice.log, type: "sys" }],
         });
       },
       chooseFinalDestination: (destination) => {
         const s = get();
-        if (s.status !== "finalChoice") return;
+        if (s.status !== "finalChoice" || s.nodeResult?.endsRun !== "victory" || !FINAL_DESTINATIONS.includes(destination)) return;
         const flag = `ending_${destination}`;
         set({
           status: "ended",
           finalDestination: destination,
-          flags: s.flags.includes(flag) ? s.flags : [...s.flags, flag],
+          flags: [...s.flags.filter(f => !FINAL_DESTINATIONS.some(d => f === `ending_${d}`)), flag],
           current: null,
           choices: [],
         });
       },
       markEndingRecorded: (ending) => set({ endingRecorded: true, endingResult: ending }),
+      recordCompletedJourney: () => {
+        const s = get();
+        if (s.status !== "ended" || s.endingRecorded || !s.nodeResult?.endsRun) return;
+        const id = s.journeyId ?? newJourneyId();
+        // Persist the ID first: retrying after an interruption cannot count the same journey twice.
+        if (!s.journeyId) set({ journeyId: id });
+        const resolution = resolveRunEndings(s.flags, s.nodeResult.endsRun === "victory");
+        const ending = s.endingResult ?? resolution.journey;
+        useMeta.getState().recordJourney({ id, slot: slotRef.current, seed: s.seed, storyId: s.storyId,
+          act: s.act, floor: s.floor, outcome: s.nodeResult.endsRun,
+          journey: ending, routes: resolution.routes, bonuses: resolution.bonuses });
+        get().markEndingRecorded(ending);
+      },
 
       selectNode: (node) => {
         const s = get();
+        if (s.status !== "choosing") return;
+        const selected = s.choices.find(choice => choice.id === node.id && choice.encounterId === node.encounterId && choice.type === node.type);
+        if (!selected) return;
+        node = selected;
         set({ current: node });
 
         switch (node.type) {
           case "battle":
           case "elite":
           case "boss": {
-            const enemy = spawnEnemy(s.level, s.seed, s.act, s.floor, node.type === "boss");
-            const difficulty = node.type === "boss" ? 14 + (s.act - 1) * 2 : node.type === "elite" ? 13 : 10;
-            const openingRoll = rollBattleOpening(s.stats.body, s.luck, difficulty);
-            const rollLabel = openingRoll.outcome === "great" ? "크리티컬!" : openingRoll.outcome === "success" ? "성공!" : openingRoll.outcome === "fumble" ? "대실패!" : "실패!";
-            set({
-              status: "battle",
-              battle: { enemy, turn: 1, log: [`책장 사이에서 ${enemy.name}이(가) 모습을 드러낸다. 숨을 고를 틈도 없이 객차의 공기가 달라진다.`] },
-            });
-            const battle = get().battle;
-            if (battle) set({ battle: {
-              ...battle,
-              openingRoll,
-              log: [...battle.log, `전투 전 판정 ${rollLabel} · d20 ${openingRoll.rolled} + 힘·행운 ${openingRoll.modifier} = ${openingRoll.total} / ${difficulty}${openingRoll.powerBonus ? ` · 공격력 +${openingRoll.powerBonus}` : ""}`],
-            } });
+            const npc = node.type === "boss" && s.act === ACTS ? companionFor(s.affinity, s.flags) : undefined;
+            if (npc && !s.seenEncounters.some(id => id.startsWith("boss_companion_"))) {
+              audio.sfx("event");
+              set({ status: "rel", activeEncounter: `boss_companion_${npc}`, encounterOutcome: null, battle: null, nodeResult: null });
+              return;
+            }
+            startNodeBattle(get, set, node);
             break;
           }
           case "shop": {
@@ -378,7 +403,10 @@ export const useRun = create<RunState>()(
             break;
           }
           case "event": {
-            const encId = s.pickEncounter(s.act);
+            const fixed = storyNode(s.act, s.floor, s.storyId, s.flags);
+            const isFixed = fixed?.id === node.id && fixed?.encounterId === node.encounterId && !s.seenEncounters.includes(node.encounterId ?? "");
+            const encId = isFixed ? fixed?.encounterId : node.encounterId && eligibleEncounters(ENCOUNTERS, s.act, s.flags, s.seenEncounters, s.storyId, s.affinity).some(e => e.id === node.encounterId)
+              ? node.encounterId : s.pickEncounter(s.act);
             if (encId) {
               const art = getEncounterArt(encId);
               if (art) useMeta.getState().collectPage(`art:${art.id}`);
@@ -400,7 +428,8 @@ export const useRun = create<RunState>()(
       },
 
       advanceFloor: () => {
-        const { act, floor, seed, nodeResult } = get();
+        const { act, floor, seed, nodeResult, status } = get();
+        if (status !== "resolving") return;
 
         if (nodeResult?.logs.length) {
           get().addLog(nodeResult.logs[nodeResult.logs.length - 1]);
@@ -410,7 +439,7 @@ export const useRun = create<RunState>()(
           set({ status: "finalChoice", current: null, choices: [] });
           return;
         }
-        if (nodeResult?.endsRun === "death") {
+        if (nodeResult?.endsRun === "death" || nodeResult?.endsRun === "defeat") {
           set({ status: "ended", current: null, choices: [] });
           return;
         }
@@ -426,10 +455,10 @@ export const useRun = create<RunState>()(
         }
 
         let nextAct = act, nextFloor = floor + 1;
-        if (nextFloor > FLOORS_PER_ACT) { nextAct += 1; nextFloor = 1; }
+        if (nextFloor > chapterLength(get().flags)) { nextAct += 1; nextFloor = 1; }
 
         if (nextAct > ACTS) {
-          set({ status: "ended", nodeResult: { logs: [], endsRun: "victory" }, current: null, choices: [] });
+          set({ status: "finalChoice", nodeResult: { logs: [], endsRun: "victory" }, current: null, choices: [] });
           return;
         }
 
@@ -442,12 +471,20 @@ export const useRun = create<RunState>()(
           return;
         }
 
+        const now = get();
+        const offer = reunionOffer(nextAct, nextFloor, now.flags, now.seenEncounters, now.storyId, now.affinity);
+        const fixed = storyNode(nextAct, nextFloor, now.storyId, now.flags);
+        const nextChoices = fixed ? [fixed] : generateChoices(seed, nextAct, nextFloor, chapterLength(now.flags));
+        if (offer && !fixed) nextChoices.push(offer.node);
+        const sideOffer = !fixed && nextFloor < chapterLength(now.flags) ? sideStoryOffer(nextAct, nextFloor, now.flags, now.seenEncounters) : undefined;
+        if (sideOffer) nextChoices.push(sideOffer.node);
         set({
+          ...(offer || sideOffer ? { flags: [...new Set([...now.flags, ...(offer ? [offer.flag] : []), ...(sideOffer ? [sideOffer.flag] : [])])] } : {}),
           act: nextAct, floor: nextFloor,
           current: null, nodeResult: null,
           battle: null, shopItems: null, shopCharms: null, shopkeeper: null, activeEncounter: null,
           status: "choosing",
-          choices: generateChoices(seed, nextAct, nextFloor, FLOORS_PER_ACT),
+          choices: nextChoices,
         });
       },
 
@@ -457,7 +494,7 @@ export const useRun = create<RunState>()(
         audio.sfx("attack");
         const powerBonus = battle.openingRoll?.powerBonus ?? 0;
         const riposteBonus = battle.nextAttackBonus ?? 0;
-        const baseDamage = Math.floor(stats.body * 1.8) + weaponPower + 1;
+        const baseDamage = basicDamage(stats, weaponPower);
         const dmg = Math.max(1, baseDamage + powerBonus + riposteBonus);
         const enemyHp = battle.enemy.hp - dmg;
         const rollText = `공격 · ${dmg} 피해${powerBonus ? ` · 전투 전 판정 +${powerBonus}` : ""}${riposteBonus ? ` · 흘려낸 힘 +${riposteBonus}` : ""}`;
@@ -465,58 +502,52 @@ export const useRun = create<RunState>()(
 
         if (enemyHp <= 0) return winBattle(get, set, logs);
 
-        const incoming = modifyBossTelegraphDamage(battle,
-          counterDamage(battle.enemy.atk, stats.will, armorPower, get().affinity));
+        const rawIncoming = modifyBossTelegraphDamage(battle,
+          counterDamage(battle.enemy.atk, stats.will, armorPower, get().affinity, stats.insight, battle.enemy.name.includes("마지막 장"), get().flags));
+        const guarded = Boolean(battle.companionGuard && rawIncoming > 0);
+        const incoming = guarded ? 0 : rawIncoming;
         const hp = get().hp - incoming;
         audio.sfx("hit");
-        logs.push(isLastBossTelegraph(battle)
+        logs.push(guarded ? "세온의 지원으로 반격을 막았다." : incoming === 0 ? "반격을 피했다." : isLastBossTelegraph(battle)
           ? `마지막 장의 예고된 강공격이 밀려온다 · 체력 -${incoming}`
           : "종이가 찢기는 소리와 함께 반격이 밀려온다. 당신은 이를 악물고 자리를 지킨다.");
 
-        if (hp <= 0) {
-          set({
-            battle: null, status: "resolving",
-            nodeResult: { logs: [...logs, "…페이지가 찢어진다. 의식이 흐려진다."], endsRun: "death" },
-          });
-          return;
-        }
-        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, nextAttackBonus: 0, log: logs } });
+        if (hp <= 0) return handleDefeat(get, set, logs);
+        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, nextAttackBonus: 0, companionGuard: battle.companionGuard && !guarded, log: logs } });
       },
 
       playerSkill: () => {
         const { battle, stats, mp, weaponPower, armorPower } = get();
         if (!battle) return;
-        if (mp < 10) return get().addLog("집중력이 부족하다.", "sys");
+        if (mp < skillCost(stats.wisdom)) return get().addLog("집중력이 부족하다.", "sys");
         audio.sfx("attack");
         const powerBonus = battle.openingRoll?.powerBonus ?? 0;
         const riposteBonus = battle.nextAttackBonus ?? 0;
-        const baseDamage = Math.floor(stats.resonance * 2.5) + 10 + weaponPower + 1;
+        const baseDamage = skillDamage(stats, weaponPower);
         const dmg = Math.max(1, baseDamage + powerBonus + riposteBonus);
         const enemyHp = battle.enemy.hp - dmg;
         const rollText = `공격 · ${dmg} 피해${powerBonus ? ` · 전투 전 판정 +${powerBonus}` : ""}${riposteBonus ? ` · 흘려낸 힘 +${riposteBonus}` : ""}`;
         const logs = [...battle.log, "숨을 고르고 손끝에 빛을 모은다. 빛이 어둠의 틈을 가른다.", rollText];
-        set({ mp: mp - 10 });
+        set({ mp: mp - skillCost(stats.wisdom) });
         if (enemyHp <= 0) return winBattle(get, set, logs);
 
-        const incoming = modifyBossTelegraphDamage(battle,
-          Math.max(1, battle.enemy.atk - Math.floor(stats.will * 0.3) - bondProtection(get().affinity) - armorPower));
+        const rawIncoming = modifyBossTelegraphDamage(battle,
+          counterDamage(battle.enemy.atk, stats.will, armorPower, get().affinity, stats.insight, battle.enemy.name.includes("마지막 장"), get().flags));
+        const guarded = Boolean(battle.companionGuard && rawIncoming > 0);
+        const incoming = guarded ? 0 : rawIncoming;
         const hp = get().hp - incoming;
         audio.sfx("hit");
-        logs.push(isLastBossTelegraph(battle)
+        logs.push(guarded ? "세온의 지원으로 반격을 막았다." : incoming === 0 ? "반격을 피했다." : isLastBossTelegraph(battle)
           ? `마지막 장의 예고된 강공격이 빛을 밀어낸다 · 체력 -${incoming}`
           : "흩어진 그림자가 다시 몸을 세운다. 차가운 기운이 곁을 스친다.");
-        if (hp <= 0) {
-          set({ battle: null, status: "resolving", nodeResult: { logs: [...logs, "…페이지가 찢어진다."], endsRun: "death" } });
-          return;
-        }
-        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, nextAttackBonus: 0, log: logs } });
+        if (hp <= 0) return handleDefeat(get, set, logs);
+        set({ hp, battle: { ...battle, enemy: { ...battle.enemy, hp: enemyHp }, turn: battle.turn + 1, nextAttackBonus: 0, companionGuard: battle.companionGuard && !guarded, log: logs } });
       },
 
       playerBrace: () => {
         const { battle, stats, weaponPower } = get();
         if (!battle || !isLastBossTelegraph(battle)) return;
-        const baseDamage = Math.floor(stats.body * 1.8) + weaponPower + 1;
-        const nextAttackBonus = Math.max(8, Math.floor(baseDamage * 0.8));
+        const nextAttackBonus = braceBonus(stats, weaponPower);
         audio.sfx("click");
         set({ battle: {
           ...battle,
@@ -526,8 +557,10 @@ export const useRun = create<RunState>()(
         } });
       },
 
-      useHealingPotion: () => useCombatPotion(get, set, "health"),
-      useFocusPotion: () => useCombatPotion(get, set, "focus"),
+      useHealingPotion: () => consumeCombatPotion(get, set, "health"),
+      autoHealingPotion: () => consumeCombatPotion(get, set, "health", true),
+      autoFocusPotion: () => consumeCombatPotion(get, set, "focus", true),
+      useFocusPotion: () => consumeCombatPotion(get, set, "focus"),
 
       buyItem: (itemId) => {
         const { shopItems, gold, stats, armorPower, luck, healthPotions, focusPotions, ownedWeapons } = get();
@@ -655,14 +688,17 @@ export const useRun = create<RunState>()(
         get().addLog(`${weapon.name} 판매 · 골드 +${weapon.value}G.`, "loot");
       },
 
-      closeShop: () => set({
-        shopItems: null, shopCharms: null, shopkeeper: null, status: "resolving",
-        nodeResult: { logs: ["상점을 뒤로하고 길을 나선다."] },
-      }),
+      closeShop: () => {
+        if (get().status !== "shop") return;
+        set({
+          shopItems: null, shopCharms: null, shopkeeper: null, status: "resolving",
+          nodeResult: { logs: ["상점을 뒤로하고 길을 나선다."] },
+        });
+      },
 
       pickEncounter: (act) => {
-        const { flags, seenEncounters, storyId } = get();
-        if (storyId === "unnamed_station") {
+        const { flags, seenEncounters, storyId, affinity, choices } = get();
+        if (storyId === "unnamed_station" && !flags.includes(EXPANDED_STORY)) {
           const firstStoryEvent = ({
             1: "station_timetable",
             2: "station_window_echo",
@@ -670,12 +706,12 @@ export const useRun = create<RunState>()(
           } as Record<number, string>)[act];
           if (firstStoryEvent && !seenEncounters.includes(firstStoryEvent)) return firstStoryEvent;
         }
-        return pickWeightedEncounter(ENCOUNTERS, act, flags, seenEncounters, Math.random, storyId || undefined);
+        return pickWeightedEncounter(ENCOUNTERS, act, flags, seenEncounters, Math.random, storyId || undefined, affinity, choices.flatMap(n => n.encounterId ? [n.encounterId] : []));
       },
 
       resolveEncounterChoice: (i) => {
         const s = get();
-        if (!s.activeEncounter || s.encounterOutcome) return;
+        if (s.status !== "rel" || !s.activeEncounter || s.encounterOutcome) return;
         const enc = ENCOUNTERS.find((e) => e.id === s.activeEncounter);
         const choice = enc?.choices[i];
         if (!enc || !choice) return;
@@ -758,14 +794,19 @@ export const useRun = create<RunState>()(
       },
 
       continueEncounter: () => {
-        const outcome = get().encounterOutcome;
-        if (!outcome) return;
+        const current = get();
+        const outcome = current.encounterOutcome;
+        if (current.status !== "rel" || !outcome) return;
+        if (current.activeEncounter?.startsWith("boss_companion_") && current.current?.type === "boss" && current.act === ACTS) {
+          startNodeBattle(get, set, current.current);
+          return;
+        }
         if (outcome.battle) {
           const s = get();
           const enemy = spawnEnemy(s.level, s.seed, s.act, s.floor, false);
           enemy.name = outcome.battle.name;
           const difficulty = 12 + (s.act - 1) * 2;
-          const openingRoll = rollBattleOpening(s.stats.body, s.luck, difficulty);
+          const openingRoll = rollBattleOpening(openingStat(s.stats), s.luck, difficulty, 12);
           const rollLabel = openingRoll.outcome === "great" ? "크리티컬!" : openingRoll.outcome === "success" ? "성공!" : openingRoll.outcome === "fumble" ? "대실패!" : "실패!";
           set({
             status: "battle",
@@ -778,7 +819,7 @@ export const useRun = create<RunState>()(
           if (battle) set({ battle: {
             ...battle,
             openingRoll,
-            log: [...battle.log, `전투 전 판정 ${rollLabel} · d20 ${openingRoll.rolled} + 힘·행운 ${openingRoll.modifier} = ${openingRoll.total} / ${difficulty}${openingRoll.powerBonus ? ` · 공격력 +${openingRoll.powerBonus}` : ""}`],
+            log: [...battle.log, `전투 전 판정 ${rollLabel} · d20 ${openingRoll.rolled} + 전투 능력·행운 ${openingRoll.modifier} = ${openingRoll.total} / ${difficulty}${openingRoll.powerBonus ? ` · 공격력 +${openingRoll.powerBonus}` : ""}`],
           } });
           return;
         }
@@ -786,7 +827,8 @@ export const useRun = create<RunState>()(
           const art = getEncounterArt(outcome.nextId);
           if (art) useMeta.getState().collectPage(`art:${art.id}`);
         }
-        set({ encounterOutcome: null, activeEncounter: outcome.nextId ?? null });
+        set({ encounterOutcome: null, activeEncounter: outcome.nextId ?? null,
+          ...(outcome.nextId ? {} : { status: "resolving" as const, nodeResult: null }) });
         if (!outcome.nextId) get().advanceFloor();
       },
 
@@ -827,8 +869,13 @@ export const useRun = create<RunState>()(
           } catch { /* 읽을 수 없는 슬롯은 그대로 둔다. */ }
         }
       },
-      version: 13,
+      version: 14,
       storage: slotStorage,
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<RunState> | undefined;
+        const prompt = saved?.pendingWeaponPrompt;
+        return { ...current, ...saved, pendingWeaponPrompt: prompt && saved?.ownedWeapons?.some(w => w.id === prompt.weaponId) ? prompt : null };
+      },
       migrate: (persisted: any, version) => {
         const s = persisted;
         if (version < 2) {
@@ -943,10 +990,11 @@ export const useRun = create<RunState>()(
             ));
           }
         }
+        if (version < 14) s.journeyId = null;
         return s;
       },
       partialize: (s) => ({
-        seed: s.seed, storyId: s.storyId, act: s.act, floor: s.floor, stats: s.stats,
+        journeyId: s.journeyId, seed: s.seed, storyId: s.storyId, act: s.act, floor: s.floor, stats: s.stats,
         hp: s.hp, maxHp: s.maxHp, mp: s.mp, maxMp: s.maxMp,
         weaponPower: s.weaponPower, armorPower: s.armorPower, luck: s.luck,
         healthPotions: s.healthPotions, focusPotions: s.focusPotions,
@@ -954,7 +1002,7 @@ export const useRun = create<RunState>()(
         ownedCharms: s.ownedCharms, equippedCharmId: s.equippedCharmId,
         gold: s.gold, level: s.level, exp: s.exp, statPoints: s.statPoints,
         choices: s.choices, current: s.current, status: s.status,
-        nodeResult: s.nodeResult, battle: s.battle, shopItems: s.shopItems, shopCharms: s.shopCharms, shopkeeper: s.shopkeeper,
+        nodeResult: s.nodeResult, battle: s.battle, shopItems: s.shopItems, shopCharms: s.shopCharms, shopkeeper: s.shopkeeper, pendingWeaponPrompt: s.pendingWeaponPrompt,
         activeEncounter: s.activeEncounter, encounterOutcome: s.encounterOutcome, seenEncounters: s.seenEncounters, autoBattle: s.autoBattle, prologueStep: s.prologueStep, interludeAct: s.interludeAct, finalDestination: s.finalDestination, endingRecorded: s.endingRecorded, endingResult: s.endingResult, affinity: s.affinity,
         flags: s.flags, logs: s.logs,
       }),
@@ -972,72 +1020,83 @@ export const useRunHydrated = () =>
 type Get = () => RunState;
 type Set = (p: Partial<RunState> | ((state: RunState) => Partial<RunState>)) => void;
 
-function counterDamage(atk: number, will: number, armorPower: number, affinity: Record<NpcId, number>) {
-  return Math.max(1, atk - Math.floor(will * 0.3) - bondProtection(affinity) - armorPower + Math.floor(Math.random() * 4) - 2);
+function startNodeBattle(get: Get, set: Set, node: MapNode) {
+  const s = get();
+  const enemy = spawnEnemy(s.level, s.seed, s.act, s.floor, node.type === "boss");
+  const finalBoss = node.type === "boss" && s.act === ACTS;
+  const difficulty = node.type === "boss" ? 14 + (s.act - 1) * 2 : node.type === "elite" ? 13 : 10;
+  const openingRoll = rollBattleOpening(openingStat(s.stats), s.luck, difficulty, finalBoss ? 14 : 12);
+  const rollLabel = openingRoll.outcome === "great" ? "크리티컬!" : openingRoll.outcome === "success" ? "성공!" : openingRoll.outcome === "fumble" ? "대실패!" : "실패!";
+  const logs = [`책장 사이에서 ${enemy.name}이(가) 모습을 드러낸다. 숨을 고를 틈도 없이 객차의 공기가 달라진다.`];
+  let hp = s.hp, mp = s.mp, companionGuard = false;
+  if (finalBoss && s.activeEncounter?.startsWith("boss_companion_") && s.encounterOutcome) {
+    const npc = s.activeEncounter.slice("boss_companion_".length);
+    if (s.flags.includes(`boss_support_${npc}`)) {
+      if (npc === "rael") { hp = Math.min(s.maxHp, hp + Math.ceil(s.maxHp * 0.2)); logs.push(`라엘의 지원 · 체력 +${hp - s.hp}`); }
+      if (npc === "seon") { companionGuard = true; logs.push("세온의 지원 · 첫 피격 피해 무효"); }
+      if (npc === "kairu") { mp = Math.min(s.maxMp, mp + Math.ceil(s.maxMp * 0.3)); logs.push(`카이루의 지원 · 집중력 +${mp - s.mp}`); }
+    }
+  }
+  logs.push(`전투 전 판정 ${rollLabel} · d20 ${openingRoll.rolled} + 전투 능력·행운 ${openingRoll.modifier} = ${openingRoll.total} / ${difficulty}${openingRoll.powerBonus ? ` · 공격력 +${openingRoll.powerBonus}` : ""}`);
+  set({ status:"battle", hp, mp, battle:{ enemy, turn:1, log:logs, openingRoll, companionGuard }, activeEncounter:null, encounterOutcome:null, nodeResult:null });
+}
+
+function counterDamage(atk: number, will: number, armorPower: number, affinity: Record<NpcId, number>, insight = 0, finalBoss = false, flags: readonly string[] = []) {
+  if (Math.random() < evadeChance(insight)) return 0;
+  return Math.max(counterFloor(atk, finalBoss), atk - willReduction(will) - bondProtection(affinity, flags) - armorPower + Math.floor(Math.random() * 4) - 2);
 }
 
 function modifyBossTelegraphDamage(battle: BattleState, incoming: number) {
   return isLastBossTelegraph(battle) ? Math.ceil(incoming * 1.4) : incoming;
 }
 
-function useCombatPotion(get: Get, set: Set, type: "health" | "focus") {
+function consumeCombatPotion(get: Get, set: Set, type: "health" | "focus", allowAuto = false) {
   const s = get();
   const inBattle = s.status === "battle" && Boolean(s.battle);
-  if (s.status === "ended" || (s.status === "resolving" && s.nodeResult?.endsRun)) return;
-  if (inBattle && s.autoBattle) return;
+  if (s.status === "ended" || s.status === "finalChoice" || (s.status === "resolving" && s.nodeResult?.endsRun)) return;
+  if (inBattle && s.autoBattle && !allowAuto) return;
   if (type === "health" && (s.healthPotions <= 0 || s.hp >= s.maxHp)) return;
   if (type === "focus" && (s.focusPotions <= 0 || s.mp >= s.maxMp)) return;
 
-  const healing = type === "health" ? Math.max(12, Math.ceil(s.maxHp / 5)) : 0;
+  const healing = type === "health" ? potionHeal(s.maxHp, s.stats.charm) : 0;
   const focus = type === "focus" ? Math.max(8, Math.ceil(s.maxMp / 5)) : 0;
   const recoveredHp = Math.min(s.maxHp, s.hp + healing);
   const recoveredMp = Math.min(s.maxMp, s.mp + focus);
-  const incoming = inBattle && s.battle
-    ? modifyBossTelegraphDamage(s.battle, counterDamage(s.battle.enemy.atk, s.stats.will, s.armorPower, s.affinity))
-    : 0;
-  const hp = recoveredHp - incoming;
   const potionLabel = type === "health" ? "체력 물약" : "집중력 물약";
   const recovery = type === "health" ? `체력 +${recoveredHp - s.hp}` : `집중력 +${recoveredMp - s.mp}`;
   audio.sfx("heal");
 
-  if (!inBattle || !s.battle) {
-    set({
-      hp: recoveredHp,
-      mp: recoveredMp,
-      healthPotions: s.healthPotions - (type === "health" ? 1 : 0),
-      focusPotions: s.focusPotions - (type === "focus" ? 1 : 0),
-    });
-    get().addLog(`${potionLabel} 사용 · ${recovery}`, "heal");
-    return;
-  }
-
-  const logs = [
-    ...s.battle.log,
-    `${potionLabel} 사용 · ${recovery}`,
-    `${isLastBossTelegraph(s.battle) ? "마지막 장의 예고된 강공격" : `${s.battle.enemy.name}의 반격`} · 체력 -${incoming}`,
-  ];
-  audio.sfx("hit");
-
-  if (hp <= 0) {
-    set({
-      hp: 0,
-      mp: recoveredMp,
-      healthPotions: s.healthPotions - (type === "health" ? 1 : 0),
-      focusPotions: s.focusPotions - (type === "focus" ? 1 : 0),
-      battle: null,
-      status: "resolving",
-      nodeResult: { logs: [...logs, "물약을 비웠지만 반격을 버티지 못했다.", "…페이지가 찢어진다."], endsRun: "death" },
-    });
-    return;
-  }
-
+  // 물약은 턴을 소모하지 않는다: 반격도, 턴 증가도 없다.
   set({
-    hp,
+    hp: recoveredHp,
     mp: recoveredMp,
     healthPotions: s.healthPotions - (type === "health" ? 1 : 0),
     focusPotions: s.focusPotions - (type === "focus" ? 1 : 0),
-    battle: { ...s.battle, turn: s.battle.turn + 1, log: logs },
+    ...(inBattle && s.battle ? { battle: { ...s.battle, log: [...s.battle.log, `${potionLabel} 사용 · ${recovery} (턴 소모 없음)`] } } : {}),
   });
+  if (!inBattle) get().addLog(`${potionLabel} 사용 · ${recovery}`, "heal");
+}
+
+function handleDefeat(get: Get, set: Set, logs: string[]) {
+  const s = get();
+  const { npc, value } = closestBond(s.affinity, s.flags);
+  const closing = "…페이지가 찢어진다. 의식이 흐려진다.";
+  const isFinal = s.act === ACTS && s.current?.type === "boss";
+  if (isFinal && value >= FINAL_RESCUE_AFFINITY) {
+    set({ battle: null, status: "resolving", hp: 0,
+      flags: [...s.flags.filter(f => !f.startsWith("final_defeat_")), `final_defeat_${npc}`],
+      nodeResult: { logs: [...logs, closing, "누군가 당신의 이름을 부른다."], endsRun: "defeat" } });
+    return;
+  }
+  if (!isFinal && value >= RESCUE_AFFINITY && !s.flags.some(f => f.startsWith("rescued_"))) {
+    const hp = Math.max(1, Math.floor(s.maxHp * RESCUE_HP_RATIO));
+    const gold = Math.floor(s.gold * (1 - RESCUE_GOLD_LOSS));
+    set({ battle: null, status: "resolving", hp, gold,
+      flags: [...s.flags, `rescued_${npc}`],
+      nodeResult: { logs: [...logs, closing, RESCUE_TEXT[npc], `체력 ${hp} 회복 · 골드 -${s.gold - gold} · 전투 보상 없음`], rescued: true } });
+    return;
+  }
+  set({ battle: null, status: "resolving", hp: 0, nodeResult: { logs: [...logs, closing], endsRun: "death" } });
 }
 
 function winBattle(get: Get, set: Set, logs: string[]) {
@@ -1103,7 +1162,7 @@ function winBattle(get: Get, set: Set, logs: string[]) {
     newLevel++;
   }
   const gained = newLevel - level;
-  const bonusHp = gained * 5;
+  const bonusHp = gained * 8;
   const bonusMp = gained * 5;
 
   if (gained > 0) audio.sfx("levelup");

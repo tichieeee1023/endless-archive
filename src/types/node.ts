@@ -4,7 +4,8 @@ export interface NodeResult {
   logs: string[];
   reward?: { gold?: number; hp?: number; mp?: number; exp?: number };
   statUp?: Partial<Stats>;
-  endsRun?: "victory" | "death";
+  endsRun?: "victory" | "death" | "defeat";
+  rescued?: boolean;
 }
 
 export type ShopItem = {

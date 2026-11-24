@@ -10,9 +10,19 @@ const CATEGORY_LABEL: Record<Category, string> = {
   items: "아이템·소품",
 };
 const CATEGORY_COUNT: Record<Category, number> = {
-  events: 40,
-  characters: 12,
-  items: 12,
+  events: ALL_ART.filter(art => art.type === "events").length,
+  characters: ALL_ART.filter(art => art.type === "characters").length,
+  items: ALL_ART.filter(art => art.type === "items").length,
+};
+
+// Preserve access to the original ending illustrations for existing ending records.
+const LEGACY_ENDING_ART: Readonly<Record<string, string>> = {
+  rael_defeat: "planned_02_4_night_train_window",
+  seon_defeat: "planned_03_1_cracked_sword",
+  kairu_defeat: "planned_04_1_voice_margin",
+  true_end: "planned_04_4_book_notebook",
+  journey_return: "planned_06_1_letter_reply",
+  journey_stay: "planned_02_2_conductors_logbook",
 };
 
 /** Art exists independently of game state; hidden ending CGs only unlock with collected endings. */
@@ -44,10 +54,13 @@ export default function ArtGallery({ endings }: { endings: readonly string[] }) 
     for (const id of endings) {
       const art = getEndingArt(id);
       if (art) ids.add(art.id);
+      const legacy = LEGACY_ENDING_ART[id];
+      if (legacy) ids.add(legacy);
     }
     return ids;
   }, [pages, seen, flags, endings]);
   const [category, setCategory] = useState<Category>("events");
+  const [onlyDiscovered, setOnlyDiscovered] = useState(false);
   const [selected, setSelected] = useState<ArtEntry | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -59,6 +72,7 @@ export default function ArtGallery({ endings }: { endings: readonly string[] }) 
   }, [selected]);
   const list = ALL_ART.filter((art) => art.type === category);
   const visibleCount = list.filter((art) => artIsUnlocked(art, collected, discovered)).length;
+  const displayed = onlyDiscovered ? list.filter(art => artIsUnlocked(art, collected, discovered)) : list;
   return (
     <section className="art-gallery" aria-labelledby="art-gallery-heading">
       <h2 id="art-gallery-heading" className="archive-section-title">삽화 보관함</h2>
@@ -72,8 +86,10 @@ export default function ArtGallery({ endings }: { endings: readonly string[] }) 
         ))}
       </div>
       <p className="art-gallery__status" aria-live="polite">{CATEGORY_LABEL[category]} · {visibleCount}/{list.length}장 보기 가능</p>
+      <label className="art-gallery__filter"><input type="checkbox" checked={onlyDiscovered} onChange={e => setOnlyDiscovered(e.target.checked)} /> 발견한 삽화만 보기</label>
+      {displayed.length === 0 && <p className="archive-note">아직 이 분류에서 발견한 삽화가 없습니다.</p>}
       <div className={`art-gallery__grid ${category === "items" ? "art-gallery__grid--items" : ""}`}>
-        {list.map((art) => {
+        {displayed.map((art) => {
           const unlocked = artIsUnlocked(art, collected, discovered);
           return unlocked ? (
             <button type="button" key={art.id} className="art-gallery__item"

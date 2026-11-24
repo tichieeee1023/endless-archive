@@ -1,9 +1,12 @@
+import { chapterLength } from "../data/mainStory";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRun } from "../store/useRun";
 import { useAudio } from "../store/useAudio";
+import { usePresentation } from "../store/usePresentation";
 import { STAT_KEYS, STAT_LABEL, STAT_DESCRIPTION, type StatKey } from "../types/game";
 import ArchiveModal from "./ArchiveModal";
 import InventoryModal from "./InventoryModal";
+import JourneyNotebookButton from "./JourneyNotebook";
 
 type MeterTone = "health" | "focus" | StatKey;
 
@@ -13,6 +16,7 @@ function DotMeter({ label, value, max, showMax = false, tone = "default" }: {
   const [open, setOpen] = useState(false);
   const safeValue = Math.max(0, value);
   const filled = max > 0 && safeValue > 0 ? Math.min(5, Math.max(1, Math.round((safeValue / max) * 5))) : 0;
+  if (showMax) return <div className={`resource-meter resource-meter--${tone}`} aria-label={`${label} ${safeValue} / ${max}`}><span>{label}</span><strong>{safeValue}<small> / {max}</small></strong><span className="resource-meter__track" aria-hidden="true"><i style={{width: `${max > 0 ? Math.min(100, safeValue / max * 100) : 0}%`}} /></span></div>;
   return (
     <div className="dot-meter-wrap">
       <button type="button" className={`dot-meter dot-meter--${tone}`} onClick={() => setOpen(!open)}
@@ -28,8 +32,9 @@ function DotMeter({ label, value, max, showMax = false, tone = "default" }: {
 }
 
 export default function StatusBar() {
-  const { hp, maxHp, mp, maxMp, gold, level, act, floor, stats, healthPotions, focusPotions, ownedWeapons, ownedCharms, startRun } = useRun();
+  const { hp, maxHp, mp, maxMp, gold, level, act, floor, flags, stats, healthPotions, focusPotions, ownedWeapons, ownedCharms, startRun } = useRun();
   const { sfxEnabled, bgmEnabled, toggleSfx, toggleBgm } = useAudio();
+  const { motionEnabled, toggleMotion } = usePresentation();
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -67,12 +72,13 @@ export default function StatusBar() {
           </div>
         </div>
         <div className="header-overview">
-          <div className="journey-line"><span>CHAPTER 0{act}</span><span>제 {floor} 페이지 <i>/ 8</i></span>
+          <div className="journey-line"><span>CHAPTER 0{act}</span><span>제 {floor} 페이지 <i>/ {chapterLength(flags)}</i></span>
             <span className="journey-meta"><span className="journey-level">레벨 {level}</span><span className="journey-gold"><i aria-hidden="true">◉</i> {gold} G</span></span>
           </div>
           <div className="resource-dots" aria-label="여행 상태">
             <DotMeter label="체력" value={hp} max={maxHp} showMax tone="health" />
             <DotMeter label="집중력" value={mp} max={maxMp} showMax tone="focus" />
+            <JourneyNotebookButton />
           </div>
         </div>
       </header>
@@ -106,6 +112,10 @@ export default function StatusBar() {
             <section className="settings-section"><h3>소리</h3>
               <button type="button" className="settings-row" onClick={toggleBgm} aria-pressed={bgmEnabled}><span>배경음</span><strong>{bgmEnabled ? "켜짐" : "꺼짐"}</strong></button>
               <button type="button" className="settings-row" onClick={toggleSfx} aria-pressed={sfxEnabled}><span>효과음</span><strong>{sfxEnabled ? "켜짐" : "꺼짐"}</strong></button>
+            </section>
+            <section className="settings-section"><h3>연출</h3>
+              <button type="button" className="settings-row" onClick={toggleMotion} aria-pressed={motionEnabled}><span>페이지·주사위 연출</span><strong>{motionEnabled ? "기본" : "빠르게"}</strong></button>
+              <p>빠르게 모드에서는 장면 효과와 주사위 연출을 생략합니다. 기기의 동작 줄이기 설정도 존중합니다.</p>
             </section>
             <section className="settings-section"><h3>여정</h3>
               <button type="button" className="settings-row settings-row--restart" onClick={reset}><span>새 여정 시작</span><span>↗</span></button>

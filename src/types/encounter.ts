@@ -41,6 +41,9 @@ export interface Encounter {
   kind: "npc" | "event" | "chain";
   title: string;
   text: string;
+  dialogue?: { high?: string; romance?: string };
+  companionKind?: "daily" | "memory" | "special" | "boss" | "romance";
+  minAffinity?: number;
   /** 등장 조건 */
   minAct?: number;
   requiresAll?: string[];   // 전부 보유해야 등장

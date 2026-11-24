@@ -44,7 +44,7 @@ export default function Prologue() {
               {PROLOGUE_PAGES.map((_, index) => <span key={index} className={index === step ? "is-active" : ""} />)}
             </div>
             <button className="text-link" onClick={skip}>건너뛰기</button>
-            <button className="story-button story-button--primary prologue-next" onClick={advance}>
+            <button className="story-button story-button--primary prologue-next" data-sfx="page" onClick={advance}>
               {step === PROLOGUE_PAGES.length - 1 ? "첫 문장 쓰기" : "다음 페이지"} <span aria-hidden="true">→</span>
             </button>
           </footer>

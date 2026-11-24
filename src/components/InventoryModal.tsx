@@ -1,13 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useRun } from "../store/useRun";
+import { potionHeal } from "../lib/combat";
 import { formatCharmEffects, formatStatBonuses } from "../lib/equipment";
 
 export default function InventoryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const {
-    status, hp, maxHp, mp, maxMp, healthPotions, focusPotions,
+    status, hp, maxHp, mp, maxMp, healthPotions, focusPotions, stats, nodeResult,
     ownedWeapons, equippedWeaponId, weaponPower, armorPower, luck,
     ownedCharms, equippedCharmId,
-    autoBattle, useHealingPotion, useFocusPotion,
+    autoBattle, useHealingPotion: restoreHealth, useFocusPotion: restoreFocus,
     equipWeapon, equipCharm,
   } = useRun();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -28,8 +29,8 @@ export default function InventoryModal({ open, onClose }: { open: boolean; onClo
 
   if (!open) return null;
 
-  const drinkHealthPotion = () => { useHealingPotion(); onClose(); };
-  const drinkFocusPotion = () => { useFocusPotion(); onClose(); };
+  const drinkHealthPotion = () => { restoreHealth(); onClose(); };
+  const drinkFocusPotion = () => { restoreFocus(); onClose(); };
 
   return (
     <div className="story-overlay inventory-overlay" onClick={onClose}>
@@ -57,23 +58,23 @@ export default function InventoryModal({ open, onClose }: { open: boolean; onClo
           <div className="inventory-potions">
             <article className="inventory-item">
               <span className="inventory-item__mark inventory-item__mark--health" aria-hidden="true">♥</span>
-              <span className="inventory-item__copy"><strong>체력 물약</strong><small>체력 한 칸 회복 · 보유 {healthPotions}개</small></span>
+              <span className="inventory-item__copy"><strong>체력 물약</strong><small>체력 최대 {potionHeal(maxHp, stats.charm)} 회복 · 보유 {healthPotions}개</small></span>
               <button type="button" className="inventory-use" onClick={drinkHealthPotion}
-                disabled={(inBattle && autoBattle) || healthPotions <= 0 || hp >= maxHp}>
+                disabled={status === "ended" || status === "finalChoice" || Boolean(nodeResult?.endsRun && status === "resolving") || (inBattle && autoBattle) || healthPotions <= 0 || hp >= maxHp}>
                 사용
               </button>
             </article>
             <article className="inventory-item">
               <span className="inventory-item__mark inventory-item__mark--focus" aria-hidden="true">✦</span>
-              <span className="inventory-item__copy"><strong>집중력 물약</strong><small>집중력 한 칸 회복 · 보유 {focusPotions}개</small></span>
+              <span className="inventory-item__copy"><strong>집중력 물약</strong><small>집중력 최대 {Math.max(8, Math.ceil(maxMp / 5))} 회복 · 보유 {focusPotions}개</small></span>
               <button type="button" className="inventory-use" onClick={drinkFocusPotion}
-                disabled={(inBattle && autoBattle) || focusPotions <= 0 || mp >= maxMp}>
+                disabled={status === "ended" || status === "finalChoice" || Boolean(nodeResult?.endsRun && status === "resolving") || (inBattle && autoBattle) || focusPotions <= 0 || mp >= maxMp}>
                 사용
               </button>
             </article>
           </div>
-          {inBattle && autoBattle && <p className="inventory-note">자동 전투를 끄면 물약을 사용할 수 있어요.</p>}
-          {inBattle && !autoBattle && <p className="inventory-note">전투 중 물약을 쓰면 적이 한 번 반격합니다.</p>}
+          {inBattle && autoBattle && <p className="inventory-note">자동 전투 중에는 위험할 때 물약을 알아서 마셔요. 직접 쓰려면 자동 전투를 끄세요.</p>}
+          {inBattle && !autoBattle && <p className="inventory-note">전투 중 물약은 턴을 소모하지 않아요.</p>}
           {!inBattle && <p className="inventory-note">전투 중이 아니어도 사용할 수 있어요. 체력이 가득 차면 체력 물약은 사용할 수 없습니다.</p>}
         </section>
 

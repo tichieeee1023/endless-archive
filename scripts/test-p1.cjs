@@ -7,59 +7,7 @@ const os = require('node:os');
 const { createRequire } = require('node:module');
 const ts = require('typescript');
 
-const root = path.resolve(__dirname, '..');
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'endless-archive-p1-'));
-fs.writeFileSync(path.join(tmp, 'package.json'), '{"type":"commonjs"}');
-process.on('exit', () => fs.rmSync(tmp, { recursive: true, force: true }));
-for (const file of [
-  'src/lib/ending.ts', 'src/lib/storyProgress.ts', 'src/lib/encounterChoice.ts',
-  'src/data/encounters.ts', 'src/data/memories.ts', 'src/data/endings.ts', 'src/data/artLibrary.ts',
-  'src/store/useRun.ts', 'src/store/useSaveSlots.ts', 'src/store/useMeta.ts',
-  'src/lib/mapgen.ts', 'src/lib/rng.ts', 'src/lib/check.ts',
-  'src/lib/encounterPool.ts', 'src/data/independentEncounters.ts',
-  'src/lib/bond.ts', 'src/lib/archiveView.ts', 'src/data/enemies.ts', 'src/data/prologue.ts',
-]) {
-  const input = fs.readFileSync(path.join(root, file), 'utf8');
-  const transpiled = ts.transpileModule(input, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-    fileName: file,
-    reportDiagnostics: true,
-  });
-  const errors = (transpiled.diagnostics ?? []).filter((d) => d.category === ts.DiagnosticCategory.Error);
-  assert.equal(errors.length, 0, `syntax error in ${file}`);
-  const dest = path.join(tmp, file.replace(/\.ts$/, '.js'));
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, transpiled.outputText);
-}
-// Minimal in-memory dependency stand-ins to exercise the real run-store functions.
-// They do not replace the project's actual React/Zustand production dependencies.
-const stub = (filename, source) => {
-  const file = path.join(tmp, 'node_modules', filename);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, source);
-};
-stub('react/index.js', 'exports.useSyncExternalStore = () => true;');
-stub('zustand/index.js', `exports.create = () => (initialize) => {
-  let state;
-  const set = (update) => {
-    const patch = typeof update === 'function' ? update(state) : update;
-    state = { ...state, ...patch };
-  };
-  const get = () => state;
-  state = initialize(set, get, {});
-  const store = () => state;
-  store.getState = get;
-  store.setState = set;
-  store.persist = { hasHydrated: () => true, onFinishHydration: () => () => {} };
-  return store;
-};`);
-stub('zustand/middleware/index.js', `const options = {};
-exports.__options = options;
-exports.persist = (initialize, config) => { options[config.name] = config; return initialize; };
-exports.createJSONStorage = () => ({});`);
-fs.mkdirSync(path.join(tmp, 'src/lib'), { recursive: true });
-fs.writeFileSync(path.join(tmp, 'src/lib/audio.js'), 'exports.audio = { sfx: () => {} };');
-const localRequire = createRequire(path.join(tmp, 'package.json'));
+const { localRequire } = require('./store-test-runtime.cjs');
 const { resolveRunEndings, resolveRouteEndings } = localRequire('./src/lib/ending.js');
 const { ENCOUNTERS } = localRequire('./src/data/encounters.js');
 const { ENDING_CATALOG } = localRequire('./src/data/endings.js');
@@ -101,12 +49,13 @@ test('several routes complete in one run, with just one journey ending', () => {
   assert.equal(resolveRunEndings(flags, true).journey.id, 'solo');
 });
 
-test('true_end uses all three story HAPPY outcomes, not legacy romance endings', () => {
+test('true_end uses the current station promise clues, not NPC romance outcomes', () => {
   const all = actors.map((id) => `route_${id}_happy`);
-  assert.equal(resolveRunEndings(all, true).journey.id, 'true_end');
-  assert.equal(resolveRunEndings(['route_rael_happy'], true, ['seon_route_happy', 'kairu_route_happy']).journey.id, 'true_end');
-  assert.equal(resolveRunEndings([], true, ['rael_end','seon_end','kairu_end']).journey.id, 'solo');
-  assert.equal(resolveRunEndings(all, false).journey.id, 'death');
+  assert.equal(resolveRunEndings(all, true).journey.id, 'solo');
+  const clues = ['ending_return','station_act1_show_ticket','station_act2_hold_ticket'];
+  assert.equal(resolveRunEndings(clues, true).journey.id, 'true_end');
+  assert.equal(resolveRunEndings(['ending_return'], true).journey.id, 'journey_return');
+  assert.equal(resolveRunEndings(clues, false).journey.id, 'death');
 });
 
 test('all event IDs are unique; every chained target exists', () => {
@@ -231,7 +180,7 @@ test('real store keeps returned-to-book kairu out of the stay-happy ending', () 
 
 test('real persisted v7 migration can open previously seen encounters without inventing endings', () => {
   const persistence = persistenceOptions['endless-archive-run'];
-  assert.equal(persistence.version, 7);
+  assert.equal(persistence.version, 14);
   const oldSave = {
     flags: ['seon_end_confirmed', 'bond_rael_1'],
     seenEncounters: ['seon_1','seon_2'],

@@ -1,10 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="72" fill="#fff"/>
-  <g fill="none" stroke="#211f1e" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M91 142c54-18 110-12 165 20 55-32 111-38 165-20v225c-54-18-110-12-165 20-55-32-111-38-165-20z" stroke-width="12"/>
-    <path d="M256 162v225M111 164c47-12 91-5 126 15M401 164c-47-12-91-5-126 15M112 344c43-9 87-3 121 14M400 344c-43-9-87-3-121 14" stroke-width="6"/>
-    <path d="M256 89v40M236 109h40M242 95l28 28M270 95l-28 28" stroke-width="5"/>
-    <path d="M142 221c28-4 52 0 77 11M142 245c27-4 52 0 77 11M293 232c25-11 49-15 77-11M293 256c25-11 50-15 77-11" stroke-width="5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="종점 없는 서고">
+  <rect width="512" height="512" fill="#252e35"/>
+  <!-- Bookplate frame, intentionally outside the maskable safe area. -->
+  <rect x="30" y="30" width="452" height="452" rx="42" fill="none" stroke="#bdab8b" stroke-width="2" opacity=".72"/>
+  <rect x="39" y="39" width="434" height="434" rx="35" fill="none" stroke="#bdab8b" stroke-width="1" opacity=".35"/>
+  <!-- A small morning star above the railway carriage. -->
+  <path d="M256 101 261 116 276 121 261 126 256 141 251 126 236 121 251 116Z" fill="#d8b986"/>
+  <!-- Front of the last carriage, with two windows. -->
+  <g stroke="#f4ebda" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M177 285V202Q177 175 200 163Q256 139 312 163Q335 175 335 202V285" fill="none" stroke-width="9"/>
+    <rect x="193" y="188" width="53" height="53" rx="10" fill="#f4ebda" stroke="none"/>
+    <rect x="266" y="188" width="53" height="53" rx="10" fill="#f4ebda" stroke="none"/>
+    <path d="M209 262H229M283 262H303" stroke-width="6"/>
+    <path d="M246 281H266" stroke="#d8b986" stroke-width="7"/>
+    <!-- The open book also forms the two railway tracks. -->
+    <path d="M256 337Q200 290 115 309L115 362Q195 345 256 393Q317 345 397 362L397 309Q312 290 256 337Z" fill="#f4ebda" stroke-width="5"/>
+    <path d="M256 337V393" fill="none" stroke="#252e35" stroke-width="5"/>
+    <path d="M133 329Q191 322 237 352M133 345Q190 338 237 369M379 329Q321 322 275 352M379 345Q322 338 275 369" fill="none" stroke="#252e35" stroke-width="3.5"/>
   </g>
+  <path d="M230 416H282" stroke="#d8b986" stroke-width="3" stroke-linecap="round"/>
 </svg>
-
